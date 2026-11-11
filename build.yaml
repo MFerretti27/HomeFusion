@@ -1,0 +1,16 @@
+---
+name: "HomeFusion"
+guid: "8c6f0a52-3b5e-4d8a-9a3e-6a1f2b7c4d10"
+version: "1.0.0.0"
+targetAbi: "12.4.0.0"
+framework: "net10.0"
+overview: "Browse your library by genre, rating and release date from Home."
+description: >
+  Adds Genres, Ratings and Release Date rows of landscape cards to the
+  Jellyfin Web home screen with per-row visibility and placement settings.
+category: "General"
+owner: "MFerretti27"
+artifacts:
+  - "Jellyfin.Plugin.HomeFusion.dll"
+changelog: >
+  Initial release.

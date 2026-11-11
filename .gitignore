@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+node_modules/
+artifacts/
+.DS_Store
+TestResults/
+
+# Ignore personal editor configuration, but keep shared build/test tasks.
+.vscode/*
+!.vscode/tasks.json

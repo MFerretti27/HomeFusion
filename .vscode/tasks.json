@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build plugin",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "Jellyfin.Plugin.HomeFusion/Jellyfin.Plugin.HomeFusion.csproj", "-c", "Release"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Test server plugin",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["test", "tests/HomeFusion.Tests/HomeFusion.Tests.csproj", "-c", "Release"],
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Test web client",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Package plugin",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "Jellyfin.Plugin.HomeFusion/Jellyfin.Plugin.HomeFusion.csproj", "-c", "Release", "-t:PackagePlugin"],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

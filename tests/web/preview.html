@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HomeFusion — mock home preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+<style>
+  /* Minimal approximation of Jellyfin Web's dark theme card styles. */
+  body { margin: 0; background: #101010; color: #ddd; font: 16px "Noto Sans", system-ui, sans-serif; }
+  header { padding: 1rem 3.3%; background: #202020; display: flex; justify-content: space-between; align-items: center; }
+  header strong { color: #00a4dc; font-size: 1.3rem; } small { color: #999; }
+  .padded-left { padding-left: 3.3%; } .padded-right { padding-right: 3.3%; }
+  .verticalSection { margin-bottom: 1.5em; }
+  .sectionTitle { font-size: 1.4em; font-weight: 400; margin: .8em 0 .4em; color: #fff; }
+  .scrollSlider { display: flex; overflow-x: auto; padding: 0 3.3% .5em; scrollbar-width: none; }
+  .card { flex: 0 0 auto; box-sizing: border-box; padding: .3em; }
+  .overflowBackdropCard { width: 23.3vw; max-width: 380px; }
+  .cardScalable { position: relative; border-radius: .2em; overflow: hidden; background: #262626; }
+  .cardPadder-overflowBackdrop { padding-bottom: 56.25%; }
+  .vertical-wrap .portraitCard { width: 16.66%; } @media (max-width:1200px){ .vertical-wrap .portraitCard { width: 25%; } }
+  .emby-scrollbuttons-button { background:none; border:0; color:#fff; font-size:1.6em; cursor:pointer; padding:0 .3em; } .emby-scrollbuttons-button:disabled { opacity:.3; cursor:default; }
+  .chevron_left::before { content:'\2039'; } .chevron_right::before { content:'\203A'; }
+  .cardOverlayContainer { position:absolute; inset:0; opacity:0; background:rgba(0,0,0,.5); transition:opacity .2s; }
+  .card-hoverable:hover .cardOverlayContainer { opacity:1; }
+  .cardOverlayContainer > .cardImageContainer { position:absolute; inset:0; }
+  .cardOverlayButton { background:none; border:0; color:#fff; cursor:pointer; padding:.4em; font-size:1.2em; }
+  .cardOverlayFab-primary { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,164,220,.9); border-radius:50%; font-size:1.6em; }
+  .cardOverlayButton-br { position:absolute; right:0; bottom:0; display:flex; }
+  .play_arrow::before{content:'\25B6';} .check::before{content:'\2713';} .favorite::before{content:'\2665';} .more_vert::before{content:'\22EE';}
+  .cardPadder-portrait { padding-bottom: 150%; }
+  .cardImageContainer { position: absolute; inset: 0; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
+  .card-hoverable:hover .cardScalable { box-shadow: 0 0 0 .2em #00a4dc; }
+  .cardText { padding: .15em .3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cardTextCentered { text-align: center; } .cardText-secondary { color: #999; font-size: .9em; }
+  .homeLibraryButtonContainer .card { width: 15vw; } .lib { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:600; }
+</style>
+</head>
+<body>
+<header><strong>Jellyfin</strong><small>HomeFusion preview · mock data, no server</small></header>
+<div id="indexPage"><div id="homeTab"><div class="sections">
+  <div class="verticalSection"><h2 class="sectionTitle padded-left">My Media</h2>
+    <div class="scrollSlider homeLibraryButtonContainer">
+      <div class="card overflowBackdropCard"><div class="cardScalable"><div class="cardPadder-overflowBackdrop"></div><div class="lib" style="background:#1d3a52">Movies</div></div></div>
+      <div class="card overflowBackdropCard"><div class="cardScalable"><div class="cardPadder-overflowBackdrop"></div><div class="lib" style="background:#3b2552">Shows</div></div></div>
+    </div></div>
+  <div class="verticalSection"><h2 class="sectionTitle padded-left">Continue Watching</h2>
+    <div class="scrollSlider" id="cw"></div></div>
+</div></div></div>
+<script>
+  const genres = ['Action','Comedy','Drama','Romance','Horror','Sci-Fi','Thriller','Animation','Documentary','Fantasy'];
+  const palette = ['#7a2e2e','#7a6a2e','#2e5a7a','#7a2e63','#3d2e7a','#2e7a6a','#4a4a4a','#2e7a3d','#6a4a2e','#5a2e7a'];
+  const items = Array.from({ length: 400 }, (_, i) => ({
+    Id: 'id' + i, Name: 'Movie ' + (i + 1),
+    Genres: [genres[i % 10], genres[(i * 7) % 10]],
+    CommunityRating: Math.round((3 + ((i * 37) % 70) / 10) * 10) / 10,
+    ProductionYear: 1935 + ((i * 13) % 91),
+    BackdropImageTags: ['t'], ImageTags: {}
+  }));
+  items.forEach(i => i.PremiereDate = i.ProductionYear + '-06-01');
+  function art(id) {
+    const n = Number(id.slice(2)), c = palette[n % 10];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="${c}"/><stop offset="1" stop-color="#111"/></linearGradient></defs><rect width="640" height="360" fill="url(#g)"/><circle cx="${100 + (n*53)%440}" cy="${80 + (n*29)%200}" r="90" fill="#ffffff14"/><path d="M0 300 L200 170 L330 260 L640 120 V360 H0" fill="#ffffff10"/></svg>`;
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+  document.getElementById('cw').innerHTML = [3, 8, 12, 21].map(n =>
+    `<div class="card overflowBackdropCard"><div class="cardScalable"><div class="cardPadder-overflowBackdrop"></div><div class="cardImageContainer" style="background-image:url('${art('id'+n)}')"></div></div><div class="cardText cardTextCentered">Movie ${n+1}</div></div>`).join('');
+  window.ApiClient = {
+    getCurrentUserId: () => 'u', accessToken: () => 't', serverId: () => 's',
+    getUrl: p => p,
+    ajax: async () => ({ Rows: [
+      { Key: 'genres', Enabled: true, Position: 'bottom' },
+      { Key: 'ratings', Enabled: true, Position: 'bottom' },
+      { Key: 'release', Enabled: true, Position: 'bottom' }],
+      RandomizeGenres: true, HiddenGenres: 'Documentary', IncludeMovies: true, IncludeSeries: false }),
+    markPlayed: async()=>{}, markUnplayed: async()=>{}, updateFavoriteStatus: async()=>{},
+    getItems: async () => ({ Items: items }),
+    getScaledImageUrl: id => art(id)
+  };
+</script>
+<script src="../../Jellyfin.Plugin.HomeFusion/Web/homefusion.js"></script>
+</body>
+</html>
