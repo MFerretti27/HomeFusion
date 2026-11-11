@@ -1,5 +1,18 @@
 # HomeFusion
 
+<p align="center">
+	<img src="assets/homefusion.png" alt="HomeFusion — Jellyfin home screen rows" width="600">
+</p>
+
+<p align="center">
+	<a href="https://github.com/MFerretti27/HomeFusion/actions/workflows/ci.yml">
+		<img src="https://github.com/MFerretti27/HomeFusion/actions/workflows/ci.yml/badge.svg" alt="Build and test status">
+	</a>
+	<a href="https://github.com/MFerretti27/HomeFusion/releases">
+		<img src="https://img.shields.io/github/downloads/MFerretti27/HomeFusion/total?label=release%20downloads&amp;color=00a4dc" alt="Total GitHub release asset downloads">
+	</a>
+</p>
+
 Jellyfin 12.4 plugin that adds three rows of landscape cards to the Jellyfin Web home screen:
 
 - **Genres** – one card per genre (Action, Comedy, Romance, …), sorted by item count.
