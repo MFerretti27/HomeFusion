@@ -17,7 +17,7 @@ Jellyfin 12.4 plugin that adds three rows of landscape cards to the Jellyfin Web
 
 - **Genres** – one card per genre (Action, Comedy, Romance, …), sorted by item count.
 - **Ratings** – Top 50, 8–10 Stars, 7 Stars, 6 Stars, 5 Stars, … (community rating).
-- **Release Date** – Top 50 Latest, 2020's, 2010's, 2000's, 1990's, … 
+- **Release Date** – Latest, 2020's, 2010's, 2000's, 1990's, … 
 
 Cards use Jellyfin's native `overflowBackdropCard` markup so they match the built-in landscape rows. Clicking a card opens a grid of the matching titles.
 

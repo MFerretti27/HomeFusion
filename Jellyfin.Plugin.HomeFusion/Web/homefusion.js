@@ -121,7 +121,7 @@
 
     function releaseCategories(items) {
         var dated = items.filter(function (i) { return year(i); }).sort(byDateDesc);
-        var cats = [{ name: 'Top 50 Latest', items: dated.slice(0, 50) }];
+        var cats = [{ name: 'Latest', items: dated.slice(0, 50) }];
         if (!dated.length) return cats;
         var oldest = Math.floor(Math.min.apply(null, dated.map(year)) / 10) * 10;
         var current = Math.floor(new Date().getFullYear() / 10) * 10;
