@@ -75,6 +75,40 @@
         return pick ? landscapeImage(pick, 600) : null;
     }
 
+    function genreImages(cats) {
+        var candidates = cats.map(function (cat) {
+            var backdrops = [];
+            var others = [];
+            var seen = new Set();
+            cat.items.forEach(function (item) {
+                var img = landscapeImage(item, 600);
+                if (!img || seen.has(img)) return;
+                seen.add(img);
+                (item.BackdropImageTags && item.BackdropImageTags.length ? backdrops : others).push(img);
+            });
+            return shuffle(backdrops).concat(shuffle(others));
+        });
+        var owners = new Map();
+        var images = cats.map(function () { return null; });
+
+        function assign(index, visited) {
+            return candidates[index].some(function (img) {
+                if (visited.has(img)) return false;
+                visited.add(img);
+                // Move an earlier card to an alternative so scarce images stay usable.
+                if (!owners.has(img) || assign(owners.get(img), visited)) {
+                    owners.set(img, index);
+                    images[index] = img;
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        cats.forEach(function (cat, index) { assign(index, new Set()); });
+        return images;
+    }
+
     function year(i) {
         if (i.ProductionYear) return i.ProductionYear;
         if (i.PremiereDate) return new Date(i.PremiereDate).getFullYear();
@@ -135,8 +169,7 @@
 
     // ---- Rendering (matches Jellyfin's native overflowBackdropCard markup) ----
 
-    function cardHtml(cat, idx) {
-        var img = pickImage(cat.items);
+    function cardHtml(cat, idx, img) {
         var style = img ? ' style="background-image:url(\'' + img + '\');"' : '';
         return '<div class="card overflowBackdropCard card-hoverable" data-hf-index="' + idx + '">' +
             '<div class="cardBox cardBox-bottompadded">' +
@@ -153,6 +186,7 @@
     }
 
     function rowElement(key, title, cats) {
+        var images = key === 'genres' ? genreImages(cats) : cats.map(function (cat) { return pickImage(cat.items); });
         var section = document.createElement('div');
         section.className = 'verticalSection hf-section';
         section.setAttribute(ROW_ATTR, key);
@@ -161,7 +195,7 @@
             '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2></div>' +
             '<div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">' +
             '<div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x">' +
-            cats.map(cardHtml).join('') +
+            cats.map(function (cat, idx) { return cardHtml(cat, idx, images[idx]); }).join('') +
             '</div></div>';
         section.addEventListener('click', function (e) {
             var card = e.target.closest('[data-hf-index]');

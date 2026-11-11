@@ -21,6 +21,8 @@ Jellyfin 12.4 plugin that adds three rows of landscape cards to the Jellyfin Web
 
 Cards use Jellyfin's native `overflowBackdropCard` markup so they match the built-in landscape rows. Clicking a card opens a grid of the matching titles.
 
+Genre cards use distinct images from their matching titles, preferring backdrops. If there are not enough distinct images, remaining cards show a folder placeholder instead of repeating an image.
+
 ## Install
 
 Add this repository URL under **Dashboard → Plugins → Repositories**:
