@@ -31,6 +31,12 @@ https://github.com/MFerretti27/HomeFusion/releases/latest/download/manifest.json
 
 Install **HomeFusion** from the catalog and restart Jellyfin. The client script is injected into the web client's `index.html` response automatically (no file writes needed).
 
+## Screenshots
+<p align="center">
+<img width="600" height="300" alt="Screenshot 2026-11-10 at 8 47 10 PM" src="https://github.com/user-attachments/assets/b7d1a66e-9d8e-435d-8f82-5c315a8ce70f" />
+</p>
+
+
 ## Settings
 
 Open **Dashboard → Home Fusion** (sidebar shortcut under Plugins). For each row you can:
