@@ -20,6 +20,7 @@ select{display:block;width:100%;padding:.55em;background:#292929;color:#fff;bord
 window.ApiClient={getPluginConfiguration:async()=>({ShowGenres:true,RandomizeGenres:true,ShowRatings:true,ShowReleaseDates:true,IncludeMovies:true,IncludeSeries:false,HiddenGenres:'Documentary|TV Movie',GenresPosition:'after-continue-watching',RatingsPosition:'bottom',ReleaseDatesPosition:'bottom'}),
 updatePluginConfiguration:async()=>({}),getJSON:async()=>({Items:['Action','Adventure','Animation','Comedy','Crime','Documentary','Drama','Family','Fantasy','Horror','Romance','Science Fiction','Thriller','TV Movie'].map(n=>({Name:n}))}),getUrl:p=>p,getCurrentUserId:()=>'u'};
 addEventListener('load',()=>document.querySelector('#HomeFusionConfigPage').dispatchEvent(new Event('pageshow')))</script>
+
 <div id="HomeFusionConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
     <div data-role="content"><div class="content-primary">
         <h2>Home Fusion</h2>
@@ -75,7 +76,7 @@ addEventListener('load',()=>document.querySelector('#HomeFusionConfigPage').disp
             </fieldset>
 
             <div class="fieldDescription">Positions apply to all users. If a user's Home does not show the selected section, the row appears at the bottom instead. Rows sharing a position keep the order Genres, Ratings, Release Date.</div>
-            <style>#HomeFusionConfigPage .hf-section{border:1px solid rgba(255,255,255,.12);border-radius:.5em;padding:.5em 1.2em 1em;margin:0 0 1.5em;}#HomeFusionConfigPage .hf-section legend{padding:0 .4em;}#HomeFusionConfigPage .hf-section legend h3{margin:0;}</style>
+            <style>#HomeFusionConfigPage .hf-section{border:1px solid rgba(255,255,255,.12);border-radius:.5em;padding:.5em 1.2em 1em;margin:0 0 1.5em;}#HomeFusionConfigPage .hf-section legend{padding:0 .4em;}#HomeFusionConfigPage .hf-section legend h3{margin:0;}#HomeFusionConfigPage .hf-section > .fieldDescription{margin-bottom:1.2em;}</style>
             <p>The rows are injected automatically into the Jellyfin Web home screen. Native clients are not modified.</p>
             <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
         </form>

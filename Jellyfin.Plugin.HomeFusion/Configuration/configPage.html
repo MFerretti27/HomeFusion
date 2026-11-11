@@ -55,9 +55,17 @@
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeMovies"><span>Include movies</span></label></div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeSeries"><span>Include series</span></label></div>
             </fieldset>
+            <fieldset class="verticalSection verticalSection-extrabottompadding hf-section">
+                <legend><h3 class="sectionTitle">Interface tweaks</h3></legend>
+                <div class="fieldDescription">Clean up annoying Jellyfin Web items. Applies to all users after a page refresh.</div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideSyncPlay"><span>Hide the SyncPlay button</span></label></div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideCast"><span>Hide the Cast / Play On button</span></label></div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="RoundedPosters"><span>Round the corners of posters and cards</span></label></div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideMyMediaTitle"><span>Hide the "My Media" section title</span></label></div>
+            </fieldset>
 
             <div class="fieldDescription">Positions apply to all users. If a user's Home does not show the selected section, the row appears at the bottom instead. Rows sharing a position keep the order Genres, Ratings, Release Date.</div>
-            <style>#HomeFusionConfigPage .hf-section{border:1px solid rgba(255,255,255,.12);border-radius:.5em;padding:.5em 1.2em 1em;margin:0 0 1.5em;}#HomeFusionConfigPage .hf-section legend{padding:0 .4em;}#HomeFusionConfigPage .hf-section legend h3{margin:0;}</style>
+            <style>#HomeFusionConfigPage .hf-section{border:1px solid rgba(255,255,255,.12);border-radius:.5em;padding:.5em 1.2em 1em;margin:0 0 1.5em;}#HomeFusionConfigPage .hf-section legend{padding:0 .4em;}#HomeFusionConfigPage .hf-section legend h3{margin:0;}#HomeFusionConfigPage .hf-section > .fieldDescription{margin-bottom:1.2em;}</style>
             <p>The rows are injected automatically into the Jellyfin Web home screen. Native clients are not modified.</p>
             <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
         </form>
@@ -66,7 +74,7 @@
         (function () {
             var id = '8c6f0a52-3b5e-4d8a-9a3e-6a1f2b7c4d10';
             var page = document.querySelector('#HomeFusionConfigPage');
-            var booleans = ['ShowGenres', 'RandomizeGenres', 'ShowRatings', 'ShowReleaseDates', 'IncludeMovies', 'IncludeSeries'];
+            var booleans = ['ShowGenres', 'RandomizeGenres', 'ShowRatings', 'ShowReleaseDates', 'IncludeMovies', 'IncludeSeries', 'HideSyncPlay', 'HideCast', 'RoundedPosters', 'HideMyMediaTitle'];
             var positions = ['GenresPosition', 'RatingsPosition', 'ReleaseDatesPosition'];
             var options = page.querySelector('#HomeFusionPositionOptions');
             page.querySelectorAll('.hfPosition').forEach(function (select) {

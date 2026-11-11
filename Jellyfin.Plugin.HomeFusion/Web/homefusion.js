@@ -220,13 +220,6 @@
         setTimeout(update, 50);
     }
 
-    // Jellyfin's own itemscontainer/playstate/rating elements wire up play, watched,
-    // favorite and the context menu when they are registered (they are in Jellyfin Web).
-    function nativeCards() {
-        return !!(window.customElements && customElements.get('emby-itemscontainer') &&
-            customElements.get('emby-playstatebutton') && customElements.get('emby-ratingbutton'));
-    }
-
     function syncUserData(btn, item, card) {
         item.UserData = item.UserData || {};
         if (btn.hasAttribute('data-played')) {
@@ -242,7 +235,7 @@
         if (btn.hasAttribute('data-isfavorite')) item.UserData.IsFavorite = btn.getAttribute('data-isfavorite') === 'true';
     }
 
-    function fallbackAction(btn, item, card) {
+    function fallbackAction(btn, item) {
         var c = api();
         var uid = c.getCurrentUserId();
         if (btn.hasAttribute('data-played')) {
@@ -255,8 +248,6 @@
             btn.setAttribute('data-isfavorite', String(fav));
             btn.classList.toggle('ratingbutton-withrating', fav);
             c.updateFavoriteStatus(uid, item.Id, fav);
-        } else {
-            window.location.hash = '#/details?id=' + item.Id + '&serverId=' + c.serverId();
         }
     }
 
@@ -269,7 +260,7 @@
             '<div class="hf-header"><button is="paper-icon-button-light" class="hf-close paper-icon-button-light" title="Close">' +
             '<span class="material-icons arrow_back" aria-hidden="true"></span></button>' +
             '<h2 class="sectionTitle">' + esc(title) + '</h2></div>' +
-            '<div is="emby-itemscontainer" class="hf-grid itemsContainer vertical-wrap padded-left padded-right" data-hf-native="' + (nativeCards() ? '1' : '') + '">' +
+            '<div is="emby-itemscontainer" class="hf-grid itemsContainer vertical-wrap padded-left padded-right">' +
             items.map(function (i) {
                 var img = posterImage(i, 400);
                 var sub = [year(i), i.CommunityRating ? '\u2605 ' + i.CommunityRating.toFixed(1) : ''].filter(Boolean).join(' \u2022 ');
@@ -292,9 +283,9 @@
                     '<button is="paper-icon-button-light" type="button" class="cardOverlayButton cardOverlayButton-hover itemAction paper-icon-button-light cardOverlayFab-primary" data-action="resume" title="Play">' +
                     '<span class="material-icons cardOverlayButton-icon play_arrow" aria-hidden="true"></span></button>' +
                     '<div class="cardOverlayButton-br flex">' +
-                    '<button is="emby-playstatebutton" type="button" data-action="none" class="cardOverlayButton cardOverlayButton-hover itemAction paper-icon-button-light emby-button' + played + '"' + attrs + ' data-played="' + !!ud.Played + '" title="Mark played">' +
+                    '<button is="paper-icon-button-light" type="button" class="cardOverlayButton cardOverlayButton-hover paper-icon-button-light' + played + '" data-played="' + !!ud.Played + '" title="Mark played">' +
                     '<span class="material-icons cardOverlayButton-icon check" aria-hidden="true"></span></button>' +
-                    '<button is="emby-ratingbutton" type="button" data-action="none" class="cardOverlayButton cardOverlayButton-hover itemAction paper-icon-button-light emby-button' + fav + '"' + attrs + ' data-likes="" data-isfavorite="' + !!ud.IsFavorite + '" title="Favorite">' +
+                    '<button is="paper-icon-button-light" type="button" class="cardOverlayButton cardOverlayButton-hover paper-icon-button-light' + fav + '" data-isfavorite="' + !!ud.IsFavorite + '" title="Favorite">' +
                     '<span class="material-icons cardOverlayButton-icon favorite" aria-hidden="true"></span></button>' +
                     '<button is="paper-icon-button-light" type="button" class="cardOverlayButton cardOverlayButton-hover itemAction paper-icon-button-light" data-action="menu" title="More">' +
                     '<span class="material-icons cardOverlayButton-icon more_vert" aria-hidden="true"></span></button>' +
@@ -314,13 +305,16 @@
             var item = card && byId[card.getAttribute('data-hf-item')];
             var btn = e.target.closest('button');
             if (item && btn) {
-                if (!grid.getAttribute('data-hf-native')) fallbackAction(btn, item, card);
-                // Keep the cached item in sync with the native buttons' new state.
-                setTimeout(function () { syncUserData(btn, item, card); }, 600);
+                // Play and More are handled by Jellyfin's itemscontainer; never navigate for them.
+                if (!btn.hasAttribute('data-played') && !btn.hasAttribute('data-isfavorite')) return;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                fallbackAction(btn, item);
+                syncUserData(btn, item, card);
                 return;
             }
             if (e.target.closest('a')) setTimeout(close, 0);
-        });
+        }, true);
         window.addEventListener('hashchange', close);
         document.body.appendChild(overlay);
         if (window.CustomElements && window.CustomElements.upgradeSubtree) window.CustomElements.upgradeSubtree(overlay);
@@ -335,9 +329,9 @@
             '.hf-card .hf-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;' +
             'background:linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.55));color:#fff;font-size:clamp(1em,1.6vw,1.6em);font-weight:600;overflow-wrap:anywhere;line-height:1.15;' +
             'text-shadow:0 2px 6px rgba(0,0,0,.8);text-align:center;padding:0 .5em;}' +
-            '.hf-overlay{position:fixed;inset:0;z-index:1000;overflow-y:auto;background:var(--theme-body-background,#101010);' +
+            '.hf-overlay{position:fixed;inset:0;z-index:10000;overflow-y:auto;background:var(--theme-body-background,#101010);' +
             'background-color:#101010;padding-bottom:2em;}' +
-            '.hf-header{display:flex;align-items:center;gap:.5em;padding:1em 3.3%;position:sticky;top:0;z-index:1;background:inherit;}' +
+            '.hf-header{display:flex;align-items:center;gap:.5em;padding:max(1em,env(safe-area-inset-top)) 3.3% 1em;position:sticky;top:0;z-index:1;background:inherit;}' +
             '.hf-header h2{margin:0;}' +
             '.hf-grid{display:flex;flex-wrap:wrap;}' +
             '.hf-grid .playstatebutton-played .cardOverlayButton-icon{color:#00a4dc;}' +
@@ -424,9 +418,29 @@
         release: { title: 'Release Date', build: releaseCategories }
     };
 
+    var TWEAK_CSS = {
+        HideSyncPlay: 'button[title*="SyncPlay" i],button[aria-label*="SyncPlay" i],a[title*="SyncPlay" i],a[aria-label*="SyncPlay" i],.headerSyncButton{display:none !important;}',
+        HideCast: 'button[title*="Play On" i],button[aria-label*="Play On" i],button[title*="Cast" i],button[aria-label*="Cast" i],a[title*="Play On" i],a[aria-label*="Play On" i],a[title*="Cast" i],a[aria-label*="Cast" i],.headerCastButton{display:none !important;}',
+        RoundedPosters: '.cardBox,.cardScalable,.cardImageContainer,.cardImage,.cardPadder,.cardOverlayContainer,.cardHoverMenu{border-radius:12px !important;}' +
+            '.cardScalable,.cardImageContainer{overflow:hidden !important;}',
+        HideMyMediaTitle: '#homeTab .verticalSection.section0 > h2.sectionTitle{visibility:hidden !important;}'
+    };
+
+    function applyTweaks() {
+        if (document.getElementById('hf-tweaks')) return;
+        var s = document.createElement('style');
+        s.id = 'hf-tweaks';
+        document.head.appendChild(s);
+        loadConfig().then(function (cfg) {
+            s.textContent = Object.keys(TWEAK_CSS).filter(function (k) { return cfg[k]; })
+                .map(function (k) { return TWEAK_CSS[k]; }).join('\n');
+        }, function () { s.remove(); });
+    }
+
     function tryInject() {
         var c = api();
         if (building || !c || !c.getCurrentUserId || !c.getCurrentUserId() || !c.accessToken || !c.accessToken()) return;
+        applyTweaks();
         var sections = findSections();
         if (!sections || sections.querySelector('[' + ROW_ATTR + ']')) return;
         // Wait until Jellyfin has rendered its own sections so positions can be resolved.

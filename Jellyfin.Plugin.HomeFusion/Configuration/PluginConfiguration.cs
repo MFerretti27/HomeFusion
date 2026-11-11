@@ -15,4 +15,8 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public string ReleaseDatesPosition { get; set; } = "bottom";
     public bool IncludeMovies { get; set; } = true;
     public bool IncludeSeries { get; set; }
+    public bool HideSyncPlay { get; set; }
+    public bool HideCast { get; set; }
+    public bool RoundedPosters { get; set; }
+    public bool HideMyMediaTitle { get; set; }
 }

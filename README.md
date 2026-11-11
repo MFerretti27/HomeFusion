@@ -27,6 +27,8 @@ Open **Dashboard → Home Fusion** (sidebar shortcut under Plugins). For each ro
 
 You can also hide specific genres (e.g. Documentary or TV Movie) from the Genres row, randomize the order of the genre cards (shuffled on each Home load), include movies and/or series.
 
+**Interface tweaks** (all off by default): hide the SyncPlay button, hide the Cast / Play On button, round poster and card corners, and hide the "My Media" section title.
+
 ## Development
 
 ```sh
