@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>1.0.0</Version>
+    <RootNamespace>Jellyfin.Plugin.HomeFusion</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Jellyfin.Controller" Version="12.4.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Jellyfin.Model" Version="12.4.0" ExcludeAssets="runtime" />
+    <EmbeddedResource Include="Configuration/configPage.html" />
+    <EmbeddedResource Include="Web/homefusion.js" />
+  </ItemGroup>
+  <Target Name="PackagePlugin" DependsOnTargets="Build">
+    <PropertyGroup>
+      <PackageRoot>$(MSBuildProjectDirectory)/../artifacts</PackageRoot>
+      <PackageStage>$(PackageRoot)/HomeFusion_$(Version)</PackageStage>
+    </PropertyGroup>
+    <MakeDir Directories="$(PackageStage)" />
+    <!-- Jellyfin supplies all dependencies. Ship only the plugin assembly. -->
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PackageStage)" />
+    <ZipDirectory SourceDirectory="$(PackageStage)" DestinationFile="$(PackageRoot)/HomeFusion_$(Version).zip" Overwrite="true" />
+  </Target>
+</Project>

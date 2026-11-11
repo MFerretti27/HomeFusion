@@ -1,0 +1,13 @@
+{
+  "name": "homefusion-web-tests",
+  "private": true,
+  "scripts": {
+    "artwork": "node scripts/render-artwork.mjs",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "test": "node --test tests/release/*.test.cjs",
+    "check": "node --check Jellyfin.Plugin.HomeFusion/Web/homefusion.js && node --check scripts/create-manifest.mjs && node --check scripts/build-plugin.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}

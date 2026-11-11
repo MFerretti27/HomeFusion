@@ -1,0 +1,134 @@
+name: Publish Jellyfin plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional version override (X.Y.Z; must be greater than the latest release)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homefusion-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Resolve release version
+        id: version
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref_name }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { execFileSync, spawnSync } from 'node:child_process';
+          import { getLatestReleaseTag, parseReleaseTag, resolveReleaseTag } from './scripts/create-manifest.mjs';
+
+          const existingTags = execFileSync('git', ['tag', '--list', 'v*'], { encoding: 'utf8' })
+            .trim().split(/\s+/).filter(Boolean);
+          const requestedVersion = process.env.REQUESTED_VERSION ?? '';
+          let tag;
+          if (process.env.RELEASE_EVENT === 'push') {
+            tag = process.env.RELEASE_REF;
+          } else {
+            let resumeTag = '';
+            const latestTag = getLatestReleaseTag(existingTags);
+            if (!requestedVersion.trim() && latestTag) {
+              const tagCommit = execFileSync('git', ['rev-parse', `${latestTag}^{commit}`], { encoding: 'utf8' }).trim();
+              if (tagCommit === process.env.GITHUB_SHA) {
+                const release = spawnSync('gh', ['release', 'view', latestTag, '--repo', process.env.GITHUB_REPOSITORY,
+                  '--json', 'isDraft', '--jq', '.isDraft'], { encoding: 'utf8' });
+                if (release.status === 0 && release.stdout.trim() === 'true') resumeTag = latestTag;
+              }
+            }
+            tag = resolveReleaseTag(existingTags, requestedVersion, resumeTag);
+          }
+          const { version } = parseReleaseTag(tag);
+          appendFileSync(process.env.GITHUB_OUTPUT, `tag=${tag}\nversion=${version}\n`);
+          NODE
+
+      - name: Test server plugin
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: dotnet test tests/HomeFusion.Tests/HomeFusion.Tests.csproj -c Release -p:Version="$RELEASE_VERSION"
+      - name: Test web client and release manifest generator
+        run: |
+          npm ci
+          npm run check
+          npm test
+
+      - name: Build versioned plugin ZIP
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: dotnet build Jellyfin.Plugin.HomeFusion/Jellyfin.Plugin.HomeFusion.csproj -c Release -t:PackagePlugin -p:Version="$RELEASE_VERSION"
+
+      - name: Generate Jellyfin repository manifest
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: node scripts/create-manifest.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" "artifacts/HomeFusion_${RELEASE_VERSION}.zip" artifacts/manifest.json
+
+      - name: Push generated release tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+          else
+            git tag "$RELEASE_TAG"
+          fi
+          git push origin "$RELEASE_TAG"
+
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Keep a new release private until all assets have been uploaded successfully.
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --draft --title "HomeFusion $RELEASE_VERSION" --generate-notes
+          fi
+          # Safe reruns may finish a draft, but must never replace already-published binaries.
+          IS_DRAFT=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')
+          if [ "$IS_DRAFT" != "true" ]; then
+            echo 'This release is already published. Create a new version tag instead of replacing its assets.' >&2
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "artifacts/HomeFusion_${RELEASE_VERSION}.zip" artifacts/manifest.json \
+            Jellyfin.Plugin.HomeFusion/Web/homefusion.js assets/homefusion.png
+          printf '\n## Install in Jellyfin\n\nAdd this repository URL under Dashboard → Plugins → Repositories:\n\nhttps://github.com/%s/releases/latest/download/manifest.json\n\nThen install HomeFusion from the plugin catalog and restart Jellyfin. The plugin automatically injects its Genres, Ratings and Release Date rows into the Jellyfin Web home screen. Configure them under Dashboard → Home Fusion.\n\nTargets Jellyfin 12.4 / .NET 10. Native clients are not modified. See https://github.com/%s#readme for details.\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" > artifacts/install-notes.md
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' > artifacts/release-notes.md
+          cat artifacts/install-notes.md >> artifacts/release-notes.md
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --notes-file artifacts/release-notes.md --draft=false --latest
