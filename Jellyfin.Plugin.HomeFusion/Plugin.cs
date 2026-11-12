@@ -16,7 +16,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     public static Plugin? Instance { get; private set; }
     public override string Name => "HomeFusion";
-    public override string Description => "Adds Genres, Ratings and Release Date rows to the home screen.";
+    public override string Description => "Adds Genres, Ratings, Release Date and Collections rows to the home screen.";
     public override Guid Id => Guid.Parse("8c6f0a52-3b5e-4d8a-9a3e-6a1f2b7c4d10");
 
     public IEnumerable<PluginPageInfo> GetPages() =>

@@ -13,6 +13,9 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public string RatingsPosition { get; set; } = "bottom";
     public bool ShowReleaseDates { get; set; } = true;
     public string ReleaseDatesPosition { get; set; } = "bottom";
+    public bool ShowCollections { get; set; }
+    public bool RandomizeCollections { get; set; }
+    public string CollectionsPosition { get; set; } = "bottom";
     public bool IncludeMovies { get; set; } = true;
     public bool IncludeSeries { get; set; }
     public bool HideSyncPlay { get; set; }

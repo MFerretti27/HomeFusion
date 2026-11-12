@@ -71,10 +71,13 @@
     ajax: async () => ({ Rows: [
       { Key: 'genres', Enabled: true, Position: 'bottom' },
       { Key: 'ratings', Enabled: true, Position: 'bottom' },
-      { Key: 'release', Enabled: true, Position: 'bottom' }],
-      RandomizeGenres: true, HiddenGenres: 'Documentary', IncludeMovies: true, IncludeSeries: false }),
+      { Key: 'release', Enabled: true, Position: 'bottom' },
+      { Key: 'collections', Enabled: true, Position: 'after-my-media' }],
+      RandomizeGenres: true, RandomizeCollections: true, HiddenGenres: 'Documentary', IncludeMovies: true, IncludeSeries: false }),
     markPlayed: async()=>{}, markUnplayed: async()=>{}, updateFavoriteStatus: async()=>{},
-    getItems: async () => ({ Items: items }),
+    getItems: async (userId, options) => ({ Items: options.IncludeItemTypes === 'BoxSet' ?
+      [2, 5, 9].map(n => ({ Id: 'id' + n, Name: ['Action favorites', 'Comedy nights', 'Family movies'][[2, 5, 9].indexOf(n)],
+        Type: 'BoxSet', ChildCount: n + 2, BackdropImageTags: ['t'] })) : items }),
     getScaledImageUrl: id => art(id)
   };
 </script>

@@ -17,14 +17,14 @@ select{display:block;width:100%;padding:.55em;background:#292929;color:#fff;bord
 </style>
 <div class="hdr">Jellyfin · Dashboard</div>
 <script>window.Dashboard={showLoadingMsg(){},hideLoadingMsg(){},alert(m){alert(m)},processPluginConfigurationUpdateResult(){alert('Settings saved (preview)')}};
-window.ApiClient={getPluginConfiguration:async()=>({ShowGenres:true,RandomizeGenres:true,ShowRatings:true,ShowReleaseDates:true,IncludeMovies:true,IncludeSeries:false,HiddenGenres:'Documentary|TV Movie',GenresPosition:'after-continue-watching',RatingsPosition:'bottom',ReleaseDatesPosition:'bottom'}),
+window.ApiClient={getPluginConfiguration:async()=>({ShowGenres:true,RandomizeGenres:true,ShowRatings:true,ShowReleaseDates:true,ShowCollections:true,RandomizeCollections:true,CollectionsPosition:'after-my-media',IncludeMovies:true,IncludeSeries:false,HiddenGenres:'Documentary|TV Movie',GenresPosition:'after-continue-watching',RatingsPosition:'bottom',ReleaseDatesPosition:'bottom'}),
 updatePluginConfiguration:async()=>({}),getJSON:async()=>({Items:['Action','Adventure','Animation','Comedy','Crime','Documentary','Drama','Family','Fantasy','Horror','Romance','Science Fiction','Thriller','TV Movie'].map(n=>({Name:n}))}),getUrl:p=>p,getCurrentUserId:()=>'u'};
 addEventListener('load',()=>document.querySelector('#HomeFusionConfigPage').dispatchEvent(new Event('pageshow')))</script>
 
 <div id="HomeFusionConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
     <div data-role="content"><div class="content-primary">
         <h2>Home Fusion</h2>
-        <p>Browse your library by genre, rating and release date from the home screen.</p>
+        <p>Browse your library by genre, rating, release date and collection from the home screen.</p>
         <form id="HomeFusionConfigForm">
             <template id="HomeFusionPositionOptions">
                 <option value="top">At top of Home</option>
@@ -68,14 +68,22 @@ addEventListener('load',()=>document.querySelector('#HomeFusionConfigPage').disp
             </fieldset>
 
             <fieldset class="verticalSection verticalSection-extrabottompadding hf-section">
+                <legend><h3 class="sectionTitle">Collections row</h3></legend>
+                <div class="fieldDescription">One card per collection, opening its Jellyfin details page.</div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="ShowCollections"><span>Show Collections row</span></label></div>
+                <div class="selectContainer"><label class="selectLabel" for="CollectionsPosition">Position</label><select is="emby-select" id="CollectionsPosition" class="hfPosition"></select></div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="RandomizeCollections"><span>Randomize order of collection cards</span></label><div class="fieldDescription">Shuffles the collection cards each time Home loads. Otherwise collections are sorted by name.</div></div>
+            </fieldset>
+
+            <fieldset class="verticalSection verticalSection-extrabottompadding hf-section">
                 <legend><h3 class="sectionTitle">Content</h3></legend>
-                <div class="fieldDescription">Which library items the rows are built from.</div>
+                <div class="fieldDescription">Which library items the Genres, Ratings and Release Date rows are built from. Collections are loaded separately for the current user.</div>
                 <div id="MediaTypeError" class="fieldDescription" role="alert" style="color: #e53935" hidden>Select at least one: movies or series.</div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeMovies"><span>Include movies</span></label></div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeSeries"><span>Include series</span></label></div>
             </fieldset>
 
-            <div class="fieldDescription">Positions apply to all users. If a user's Home does not show the selected section, the row appears at the bottom instead. Rows sharing a position keep the order Genres, Ratings, Release Date.</div>
+            <div class="fieldDescription">Positions apply to all users. If a user's Home does not show the selected section, the row appears at the bottom instead. Rows sharing a position keep the order Genres, Ratings, Release Date, Collections.</div>
             <style>#HomeFusionConfigPage .hf-section{border:1px solid rgba(255,255,255,.12);border-radius:.5em;padding:.5em 1.2em 1em;margin:0 0 1.5em;}#HomeFusionConfigPage .hf-section legend{padding:0 .4em;}#HomeFusionConfigPage .hf-section legend h3{margin:0;}#HomeFusionConfigPage .hf-section > .fieldDescription{margin-bottom:1.2em;}</style>
             <p>The rows are injected automatically into the Jellyfin Web home screen. Native clients are not modified.</p>
             <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
@@ -85,8 +93,8 @@ addEventListener('load',()=>document.querySelector('#HomeFusionConfigPage').disp
         (function () {
             var id = '8c6f0a52-3b5e-4d8a-9a3e-6a1f2b7c4d10';
             var page = document.querySelector('#HomeFusionConfigPage');
-            var booleans = ['ShowGenres', 'RandomizeGenres', 'ShowRatings', 'ShowReleaseDates', 'IncludeMovies', 'IncludeSeries'];
-            var positions = ['GenresPosition', 'RatingsPosition', 'ReleaseDatesPosition'];
+            var booleans = ['ShowGenres', 'RandomizeGenres', 'ShowRatings', 'ShowReleaseDates', 'ShowCollections', 'RandomizeCollections', 'IncludeMovies', 'IncludeSeries'];
+            var positions = ['GenresPosition', 'RatingsPosition', 'ReleaseDatesPosition', 'CollectionsPosition'];
             var options = page.querySelector('#HomeFusionPositionOptions');
             page.querySelectorAll('.hfPosition').forEach(function (select) {
                 select.append(options.content.cloneNode(true));

@@ -77,15 +77,15 @@ test('prefers backdrops but uses thumb and primary images rather than duplicates
     ] }]).images, ['backdrop/Backdrop/tag']);
 });
 
-test('does not reuse images when distinct artwork is exhausted or missing', () => {
+test('reuses available images when exhausted and only uses placeholders for missing artwork', () => {
     const shared = item('shared');
     const result = render([
         { name: 'First', items: [shared, shared] },
         { name: 'Second', items: [shared] },
         { name: 'Missing', items: [item('missing', null)] }
     ]);
-    assert.deepEqual(result.images, ['shared/Backdrop/tag']);
-    assert.equal(result.placeholders, 2);
+    assert.deepEqual(result.images, ['shared/Backdrop/tag', 'shared/Backdrop/tag']);
+    assert.equal(result.placeholders, 1);
 });
 
 test('considers artwork beyond the previous thirty-title selection limit', () => {
@@ -103,12 +103,22 @@ test('image reservations reset for each genre row render', () => {
     assert.deepEqual(render(cats).images, render(cats).images);
 });
 
-test('ratings and release rows retain independent image selection', () => {
+test('every row type prefers unique images before allowing repeats', () => {
     const cats = [
-        { name: 'First', items: [item('shared')] },
+        { name: 'First', items: [item('shared'), item('alternative')] },
         { name: 'Second', items: [item('shared')] }
     ];
-    for (const key of ['ratings', 'release']) {
-        assert.deepEqual(render(cats, key).images, ['shared/Backdrop/tag', 'shared/Backdrop/tag']);
+    for (const key of ['genres', 'ratings', 'release', 'collections']) {
+        assert.deepEqual(render(cats, key).images, ['alternative/Backdrop/tag', 'shared/Backdrop/tag']);
     }
+});
+
+test('spreads unavoidable repeats across the least-used eligible images', () => {
+    const items = [item('a'), item('b')];
+    const cats = Array.from({ length: 6 }, (_, index) => ({ name: `Card ${index}`, items }));
+    const result = render(cats);
+    assert.equal(result.images.length, 6);
+    assert.equal(result.images.filter(img => img === 'a/Backdrop/tag').length, 3);
+    assert.equal(result.images.filter(img => img === 'b/Backdrop/tag').length, 3);
+    assert.equal(result.placeholders, 0);
 });

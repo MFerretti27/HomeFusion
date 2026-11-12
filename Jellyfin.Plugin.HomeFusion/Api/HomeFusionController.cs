@@ -28,9 +28,11 @@ public sealed class HomeFusionController : ControllerBase
             {
                 new { Key = "genres", Enabled = c.ShowGenres, Position = c.GenresPosition },
                 new { Key = "ratings", Enabled = c.ShowRatings, Position = c.RatingsPosition },
-                new { Key = "release", Enabled = c.ShowReleaseDates, Position = c.ReleaseDatesPosition }
+                new { Key = "release", Enabled = c.ShowReleaseDates, Position = c.ReleaseDatesPosition },
+                new { Key = "collections", Enabled = c.ShowCollections, Position = c.CollectionsPosition }
             },
             c.RandomizeGenres,
+            c.RandomizeCollections,
             c.HiddenGenres,
             c.IncludeMovies,
             c.IncludeSeries,

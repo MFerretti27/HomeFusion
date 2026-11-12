@@ -13,15 +13,16 @@
 	</a>
 </p>
 
-Jellyfin 12.4 plugin that adds three rows of landscape cards to the Jellyfin Web home screen:
+Jellyfin 12.4 plugin that adds four configurable rows of landscape cards to the Jellyfin Web home screen:
 
 - **Genres** – one card per genre (Action, Comedy, Romance, …), sorted by item count.
 - **Ratings** – Top 50, 8–10 Stars, 7 Stars, 6 Stars, 5 Stars, … (community rating).
 - **Release Date** – Latest, 2020's, 2010's, 2000's, 1990's, … 
+- **Collections** – one card per collection, sorted by name, opening its Jellyfin details page (off by default).
 
-Cards use Jellyfin's native `overflowBackdropCard` markup so they match the built-in landscape rows. Clicking a card opens a grid of the matching titles.
+Cards use Jellyfin's native `overflowBackdropCard` markup so they match the built-in landscape rows. Clicking a genre, rating or release date card opens a grid of the matching titles; collection cards open Jellyfin's collection details page.
 
-Genre cards use distinct images from their matching titles, preferring backdrops. If there are not enough distinct images, remaining cards show a folder placeholder instead of repeating an image.
+Cards across all enabled HomeFusion rows coordinate artwork selection to maximize unique images, preferring backdrops from matching titles (or the collection's own artwork). When distinct artwork runs out, images can repeat; folder placeholders are only used when a card has no artwork available.
 
 ## Install
 
@@ -47,6 +48,8 @@ Open **Dashboard → Home Fusion** (sidebar shortcut under Plugins). For each ro
 - choose where it appears: top of Home, after My Media / Continue Watching / Latest Media / Next Up / Continue Listening / Continue Reading / Live TV / Active Recordings, or bottom of Home.
 
 You can also hide specific genres (e.g. Documentary or TV Movie) from the Genres row, randomize the order of the genre cards (shuffled on each Home load), include movies and/or series.
+
+Enable the Collections row to show the current user's collections, independently of the movie/series filters. Its settings include a row position and a separate option to randomize collection order each time Home loads.
 
 **Interface tweaks** (all off by default): hide the SyncPlay button, hide the Cast / Play On button, round poster and card corners, and hide the "My Media" section title.
 
