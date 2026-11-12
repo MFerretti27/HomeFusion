@@ -206,17 +206,20 @@
         var style = img ? ' style="background-image:url(\'' + img + '\');"' : '';
         var tag = cat.href ? 'a' : 'button';
         var action = cat.href ? ' href="' + esc(cat.href) + '"' : ' type="button"';
+        var subtitle = cat.subtitle == null ? cat.items.length + ' titles' : cat.subtitle;
+        var primaryText = portrait ? cat.name : subtitle;
         return '<div class="card ' + (portrait ? 'overflowPortraitCard' : 'overflowBackdropCard') + ' card-hoverable" data-hf-index="' + idx + '">' +
             '<div class="cardBox cardBox-bottompadded">' +
             '<div class="cardScalable">' +
             '<div class="cardPadder ' + (portrait ? 'cardPadder-portrait' : 'cardPadder-overflowBackdrop') + '"></div>' +
             '<' + tag + action + ' class="cardImageContainer coveredImage cardContent itemAction hf-card"' + style + '>' +
             (img ? '' : '<span class="cardImageIcon material-icons folder" aria-hidden="true"></span>') +
-            '<div class="hf-label">' + esc(cat.name) + '</div>' +
+            (portrait ? '' : '<div class="hf-label">' + esc(cat.name) + '</div>') +
             '</' + tag + '>' +
             '<div class="cardOverlayContainer"' + (cat.href ? ' style="pointer-events:none;"' : '') + '></div>' +
             '</div>' +
-            '<div class="cardText cardTextCentered cardText-first"><bdi>' + esc(cat.subtitle == null ? cat.items.length + ' titles' : cat.subtitle) + '</bdi></div>' +
+            '<div class="cardText cardTextCentered cardText-first"><bdi>' + esc(primaryText) + '</bdi></div>' +
+            (portrait ? '<div class="cardText cardTextCentered cardText-secondary"><bdi>' + esc(subtitle) + '</bdi></div>' : '') +
             '</div></div>';
     }
 
@@ -336,11 +339,11 @@
                 var sub = [year(i), i.CommunityRating ? '\u2605 ' + i.CommunityRating.toFixed(1) : ''].filter(Boolean).join(' \u2022 ');
                 var ud = i.UserData || {};
                 var href = '#/details?id=' + i.Id + '&serverId=' + serverId;
-                var attrs = ' data-id="' + i.Id + '" data-serverid="' + serverId + '" data-itemtype="' + i.Type + '"';
+                var positionTicks = ud.PlaybackPositionTicks ? ' data-positionticks="' + ud.PlaybackPositionTicks + '"' : '';
                 var played = ud.Played ? ' playstatebutton-played' : '';
                 var fav = ud.IsFavorite ? ' ratingbutton-withrating' : '';
                 return '<div class="card portraitCard card-hoverable card-withuserdata" data-hf-item="' + i.Id + '" data-id="' + i.Id + '"' +
-                    ' data-serverid="' + serverId + '" data-type="' + i.Type + '" data-mediatype="Video" data-isfolder="' + (i.Type === 'Series') + '" data-action="link">' +
+                    ' data-serverid="' + serverId + '" data-type="' + i.Type + '" data-mediatype="Video" data-isfolder="' + (i.Type === 'Series') + '"' + positionTicks + ' data-action="link">' +
                     '<div class="cardBox cardBox-bottompadded"><div class="cardScalable">' +
                     '<div class="cardPadder cardPadder-portrait"></div>' +
                     '<a class="cardImageContainer coveredImage cardContent itemAction" data-action="link" href="' + href + '"' +

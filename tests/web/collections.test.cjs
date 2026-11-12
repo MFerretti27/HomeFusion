@@ -11,6 +11,7 @@ const configuredRowOrder = [...controller.matchAll(/new \{ Key = "([^"]+)", Enab
 function setup({ enabled = true, randomize = false, collections = [], items = [], position = 'bottom', otherRows = [] } = {}) {
     const calls = [];
     const rows = [];
+    const overlays = [];
     const errors = [];
     const configuredRows = [{ Key: 'collections', Enabled: enabled, Position: position }, ...otherRows];
     const cfg = {
@@ -25,6 +26,8 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
     };
     const context = vm.createContext({
         window: {
+            addEventListener() {},
+            removeEventListener() {},
             ApiClient: {
                 getCurrentUserId: () => 'user',
                 accessToken: () => 'token',
@@ -37,11 +40,17 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
             }
         },
         document: {
+            body: { appendChild: element => overlays.push(element) },
             createElement: () => ({
                 attributes: {},
                 listeners: {},
                 setAttribute(key, value) { this.attributes[key] = value; },
-                addEventListener(key, listener) { this.listeners[key] = listener; }
+                addEventListener(key, listener) { this.listeners[key] = listener; },
+                querySelector(selector) {
+                    if (selector === '.hf-close') return { addEventListener() {} };
+                    if (selector === '.hf-grid') return { addEventListener: (key, listener) => { this.gridListener = listener; } };
+                    return null;
+                }
             })
         },
         console: { warn: (...args) => errors.push(args) },
@@ -56,9 +65,9 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
         findSections = function () { return testSections; };
         applyTweaks = function () {};
         injectStyles = function () {};
-        globalThis.client = { loadCollections, collectionCategories, rowElement, tryInject, placeRow };
+        globalThis.client = { loadCollections, collectionCategories, rowElement, openCategory, tryInject, placeRow };
     })();`, context);
-    return { client: context.client, calls, rows, errors, cfg };
+    return { client: context.client, calls, rows, overlays, errors, cfg };
 }
 
 const collections = [
@@ -94,12 +103,14 @@ test('preserves alphabetical API order by default and shuffles only when enabled
     }
 });
 
-test('renders collection artwork, real child counts, placeholders and native details links', () => {
+test('renders collection names below the artwork with child counts and native details links', () => {
     const { client } = setup();
     const row = client.rowElement('collections', 'Collections', client.collectionCategories(collections));
-    assert.match(row.innerHTML, /Alpha &amp; friends/);
-    assert.match(row.innerHTML, /3 titles/);
-    assert.match(row.innerHTML, /0 titles/);
+    assert.doesNotMatch(row.innerHTML, /class="hf-label"/);
+    assert.match(row.innerHTML, /cardText-first"><bdi>Alpha &amp; friends<\/bdi>/);
+    assert.match(row.innerHTML, /cardText-secondary"><bdi>3 titles<\/bdi>/);
+    assert.match(row.innerHTML, /cardText-first"><bdi>Beta<\/bdi>/);
+    assert.match(row.innerHTML, /cardText-secondary"><bdi>0 titles<\/bdi>/);
     assert.match(row.innerHTML, /<bdi>Collection<\/bdi>/);
     assert.match(row.innerHTML, /alpha\/Backdrop/);
     assert.match(row.innerHTML, /beta\/Primary/);
@@ -128,6 +139,16 @@ test('collections prefer posters over backdrops while other rows stay landscape'
         assert.match(landscape.innerHTML, /poster\/Backdrop/);
         assert.doesNotMatch(landscape.innerHTML, /overflowPortraitCard/);
     }
+});
+
+test('play buttons include playback position for native Jellyfin resume handling', () => {
+    const { client, overlays } = setup();
+    client.openCategory('Action', [{
+        Id: 'movie', Name: 'Movie', Type: 'Movie',
+        UserData: { PlaybackPositionTicks: 12345 }
+    }]);
+    assert.match(overlays[0].innerHTML, /data-positionticks="12345"/);
+    assert.match(overlays[0].innerHTML, /data-action="resume" title="Play"/);
 });
 
 test('injects collections without movie or series items and applies the chosen position', async () => {
