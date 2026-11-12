@@ -13,14 +13,14 @@
 	</a>
 </p>
 
-Jellyfin 12.4 plugin that adds four configurable rows of landscape cards to the Jellyfin Web home screen:
+Jellyfin 12.4 plugin that adds four configurable card rows to the Jellyfin Web home screen:
 
 - **Genres** – one card per genre (Action, Comedy, Romance, …), sorted by item count.
 - **Ratings** – Top 50, 8–10 Stars, 7 Stars, 6 Stars, 5 Stars, … (community rating).
 - **Release Date** – Latest, 2020's, 2010's, 2000's, 1990's, … 
 - **Collections** – one card per collection, sorted by name, opening its Jellyfin details page (off by default).
 
-Cards use Jellyfin's native `overflowBackdropCard` markup so they match the built-in landscape rows. Clicking a genre, rating or release date card opens a grid of the matching titles; collection cards open Jellyfin's collection details page.
+Cards use Jellyfin's native overflow card markup: portrait cards for Collections, landscape cards for Genres, Ratings and Release Date. Collection cards prefer poster artwork, falling back to other collection artwork when no poster exists. Clicking a genre, rating or release date card opens a grid of the matching titles; collection cards open Jellyfin's collection details page.
 
 Cards across all enabled HomeFusion rows coordinate artwork selection to maximize unique images, preferring backdrops from matching titles (or the collection's own artwork). When distinct artwork runs out, images can repeat; folder placeholders are only used when a card has no artwork available.
 

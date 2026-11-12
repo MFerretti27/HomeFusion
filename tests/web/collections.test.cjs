@@ -99,6 +99,9 @@ test('renders collection artwork, real child counts, placeholders and native det
     assert.match(row.innerHTML, /<bdi>Collection<\/bdi>/);
     assert.match(row.innerHTML, /alpha\/Backdrop/);
     assert.match(row.innerHTML, /beta\/Primary/);
+    assert.match(row.innerHTML, /card overflowPortraitCard card-hoverable/);
+    assert.match(row.innerHTML, /cardPadder cardPadder-portrait/);
+    assert.doesNotMatch(row.innerHTML, /overflowBackdropCard|cardPadder-overflowBackdrop/);
     assert.match(row.innerHTML, /cardImageIcon/);
     assert.match(row.innerHTML, /<a href="#\/details\?id=alpha&amp;serverId=server"/);
     assert.match(row.innerHTML, /class="cardOverlayContainer" style="pointer-events:none;"/);
@@ -106,6 +109,21 @@ test('renders collection artwork, real child counts, placeholders and native det
         preventDefault() { assert.fail('Collection navigation must not be prevented'); },
         stopPropagation() { assert.fail('Collection navigation must not be stopped'); }
     });
+});
+
+test('collections prefer posters over backdrops while other rows stay landscape', () => {
+    const { client } = setup();
+    const item = { Id: 'poster', Name: 'Poster collection', BackdropImageTags: ['backdrop'], ImageTags: { Primary: 'primary' } };
+    const row = client.rowElement('collections', 'Collections', client.collectionCategories([item]));
+    assert.match(row.innerHTML, /poster\/Primary/);
+    assert.doesNotMatch(row.innerHTML, /poster\/Backdrop/);
+    for (const key of ['genres', 'ratings', 'release']) {
+        const landscape = client.rowElement(key, key, [{ name: 'Category', items: [item] }]);
+        assert.match(landscape.innerHTML, /card overflowBackdropCard card-hoverable/);
+        assert.match(landscape.innerHTML, /cardPadder cardPadder-overflowBackdrop/);
+        assert.match(landscape.innerHTML, /poster\/Backdrop/);
+        assert.doesNotMatch(landscape.innerHTML, /overflowPortraitCard/);
+    }
 });
 
 test('injects collections without movie or series items and applies the chosen position', async () => {

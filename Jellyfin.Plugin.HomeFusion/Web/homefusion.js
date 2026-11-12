@@ -91,7 +91,7 @@
             var others = [];
             var seen = new Set();
             cat.items.forEach(function (item) {
-                var img = landscapeImage(item, 600);
+                var img = (cat.portrait && posterImage(item, 600)) || landscapeImage(item, 600);
                 if (!img || seen.has(img)) return;
                 seen.add(img);
                 (item.BackdropImageTags && item.BackdropImageTags.length ? backdrops : others).push(img);
@@ -192,6 +192,7 @@
         return collections.map(function (item) {
             return {
                 name: item.Name,
+                portrait: true,
                 items: [item],
                 href: '#/details?id=' + encodeURIComponent(item.Id) + '&serverId=' + encodeURIComponent(api().serverId()),
                 subtitle: item.ChildCount == null ? 'Collection' : item.ChildCount + ' titles'
@@ -199,16 +200,16 @@
         });
     }
 
-    // ---- Rendering (matches Jellyfin's native overflowBackdropCard markup) ----
+    // ---- Rendering (matches Jellyfin's native overflow card markup) ----
 
-    function cardHtml(cat, idx, img) {
+    function cardHtml(cat, idx, img, portrait) {
         var style = img ? ' style="background-image:url(\'' + img + '\');"' : '';
         var tag = cat.href ? 'a' : 'button';
         var action = cat.href ? ' href="' + esc(cat.href) + '"' : ' type="button"';
-        return '<div class="card overflowBackdropCard card-hoverable" data-hf-index="' + idx + '">' +
+        return '<div class="card ' + (portrait ? 'overflowPortraitCard' : 'overflowBackdropCard') + ' card-hoverable" data-hf-index="' + idx + '">' +
             '<div class="cardBox cardBox-bottompadded">' +
             '<div class="cardScalable">' +
-            '<div class="cardPadder cardPadder-overflowBackdrop"></div>' +
+            '<div class="cardPadder ' + (portrait ? 'cardPadder-portrait' : 'cardPadder-overflowBackdrop') + '"></div>' +
             '<' + tag + action + ' class="cardImageContainer coveredImage cardContent itemAction hf-card"' + style + '>' +
             (img ? '' : '<span class="cardImageIcon material-icons folder" aria-hidden="true"></span>') +
             '<div class="hf-label">' + esc(cat.name) + '</div>' +
@@ -229,7 +230,7 @@
             '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2></div>' +
             '<div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">' +
             '<div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x">' +
-            cats.map(function (cat, idx) { return cardHtml(cat, idx, images[idx]); }).join('') +
+            cats.map(function (cat, idx) { return cardHtml(cat, idx, images[idx], key === 'collections'); }).join('') +
             '</div></div>';
         section.addEventListener('click', function (e) {
             if (key === 'collections') return;
