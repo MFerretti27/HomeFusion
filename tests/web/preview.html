@@ -16,6 +16,7 @@
   .scrollSlider { display: flex; overflow-x: auto; padding: 0 3.3% .5em; scrollbar-width: none; }
   .card { flex: 0 0 auto; box-sizing: border-box; padding: .3em; }
   .overflowBackdropCard { width: 23.3vw; max-width: 380px; }
+  .overflowPortraitCard { width: 15vw; max-width: 240px; }
   .cardScalable { position: relative; border-radius: .2em; overflow: hidden; background: #262626; }
   .cardPadder-overflowBackdrop { padding-bottom: 56.25%; }
   .vertical-wrap .portraitCard { width: 16.66%; } @media (max-width:1200px){ .vertical-wrap .portraitCard { width: 25%; } }
@@ -69,12 +70,15 @@
     getCurrentUserId: () => 'u', accessToken: () => 't', serverId: () => 's',
     getUrl: p => p,
     ajax: async () => ({ Rows: [
+      { Key: 'collections', Enabled: true, Position: 'after-my-media' },
       { Key: 'genres', Enabled: true, Position: 'bottom' },
       { Key: 'ratings', Enabled: true, Position: 'bottom' },
       { Key: 'release', Enabled: true, Position: 'bottom' }],
-      RandomizeGenres: true, HiddenGenres: 'Documentary', IncludeMovies: true, IncludeSeries: false }),
+      RandomizeGenres: true, RandomizeCollections: true, HiddenGenres: 'Documentary', IncludeMovies: true, IncludeSeries: false }),
     markPlayed: async()=>{}, markUnplayed: async()=>{}, updateFavoriteStatus: async()=>{},
-    getItems: async () => ({ Items: items }),
+    getItems: async (userId, options) => ({ Items: options.IncludeItemTypes === 'BoxSet' ?
+      [2, 5, 9].map(n => ({ Id: 'id' + n, Name: ['Action favorites', 'Comedy nights', 'Family movies'][[2, 5, 9].indexOf(n)],
+        Type: 'BoxSet', ChildCount: n + 2, BackdropImageTags: ['t'], ImageTags: { Primary: 'p' } })) : items }),
     getScaledImageUrl: id => art(id)
   };
 </script>

@@ -1,4 +1,4 @@
-/* HomeFusion - adds Genres, Ratings and Release Date rows to the Jellyfin home screen. */
+/* HomeFusion - adds Genres, Ratings, Release Date and Collections rows to the Jellyfin home screen. */
 (function () {
     'use strict';
 
@@ -47,6 +47,23 @@
         return a;
     }
 
+    function loadCollections() {
+        if (!config.Rows.some(function (r) { return r.Key === 'collections' && r.Enabled; })) {
+            return Promise.resolve([]);
+        }
+        var c = api();
+        return c.getItems(c.getCurrentUserId(), {
+            Recursive: true,
+            IncludeItemTypes: 'BoxSet',
+            SortBy: 'SortName',
+            SortOrder: 'Ascending',
+            Fields: 'ChildCount',
+            EnableImageTypes: 'Backdrop,Primary,Thumb',
+            ImageTypeLimit: 1,
+            EnableTotalRecordCount: false
+        }).then(function (res) { return res.Items || []; });
+    }
+
     function landscapeImage(item, width) {
         var c = api();
         if (item.BackdropImageTags && item.BackdropImageTags.length) {
@@ -68,11 +85,48 @@
         return null;
     }
 
-    function pickImage(items) {
-        var withBackdrop = items.filter(function (i) { return i.BackdropImageTags && i.BackdropImageTags.length; });
-        var pool = withBackdrop.length ? withBackdrop : items;
-        var pick = shuffle(pool.slice(0, 30))[0];
-        return pick ? landscapeImage(pick, 600) : null;
+    function categoryImages(cats) {
+        var candidates = cats.map(function (cat) {
+            var backdrops = [];
+            var others = [];
+            var seen = new Set();
+            cat.items.forEach(function (item) {
+                var img = (cat.portrait && posterImage(item, 600)) || landscapeImage(item, 600);
+                if (!img || seen.has(img)) return;
+                seen.add(img);
+                (item.BackdropImageTags && item.BackdropImageTags.length ? backdrops : others).push(img);
+            });
+            return shuffle(backdrops).concat(shuffle(others));
+        });
+        var owners = new Map();
+        var images = cats.map(function () { return null; });
+
+        function assign(index, visited) {
+            return candidates[index].some(function (img) {
+                if (visited.has(img)) return false;
+                visited.add(img);
+                // Move an earlier card to an alternative so scarce images stay usable.
+                if (!owners.has(img) || assign(owners.get(img), visited)) {
+                    owners.set(img, index);
+                    images[index] = img;
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        cats.forEach(function (cat, index) { assign(index, new Set()); });
+        var usage = new Map();
+        images.forEach(function (img) { if (img) usage.set(img, 1); });
+        images.forEach(function (img, index) {
+            if (img || !candidates[index].length) return;
+            var pick = candidates[index].reduce(function (best, candidate) {
+                return (usage.get(candidate) || 0) < (usage.get(best) || 0) ? candidate : best;
+            });
+            images[index] = pick;
+            usage.set(pick, (usage.get(pick) || 0) + 1);
+        });
+        return images;
     }
 
     function year(i) {
@@ -133,26 +187,41 @@
         return cats;
     }
 
-    // ---- Rendering (matches Jellyfin's native overflowBackdropCard markup) ----
+    function collectionCategories(items) {
+        var collections = config.RandomizeCollections ? shuffle(items) : items;
+        return collections.map(function (item) {
+            return {
+                name: item.Name,
+                portrait: true,
+                items: [item],
+                href: '#/details?id=' + encodeURIComponent(item.Id) + '&serverId=' + encodeURIComponent(api().serverId()),
+                subtitle: item.ChildCount == null ? 'Collection' : item.ChildCount + ' titles'
+            };
+        });
+    }
 
-    function cardHtml(cat, idx) {
-        var img = pickImage(cat.items);
+    // ---- Rendering (matches Jellyfin's native overflow card markup) ----
+
+    function cardHtml(cat, idx, img, portrait) {
         var style = img ? ' style="background-image:url(\'' + img + '\');"' : '';
-        return '<div class="card overflowBackdropCard card-hoverable" data-hf-index="' + idx + '">' +
+        var tag = cat.href ? 'a' : 'button';
+        var action = cat.href ? ' href="' + esc(cat.href) + '"' : ' type="button"';
+        return '<div class="card ' + (portrait ? 'overflowPortraitCard' : 'overflowBackdropCard') + ' card-hoverable" data-hf-index="' + idx + '">' +
             '<div class="cardBox cardBox-bottompadded">' +
             '<div class="cardScalable">' +
-            '<div class="cardPadder cardPadder-overflowBackdrop"></div>' +
-            '<button type="button" class="cardImageContainer coveredImage cardContent itemAction hf-card"' + style + '>' +
+            '<div class="cardPadder ' + (portrait ? 'cardPadder-portrait' : 'cardPadder-overflowBackdrop') + '"></div>' +
+            '<' + tag + action + ' class="cardImageContainer coveredImage cardContent itemAction hf-card"' + style + '>' +
             (img ? '' : '<span class="cardImageIcon material-icons folder" aria-hidden="true"></span>') +
             '<div class="hf-label">' + esc(cat.name) + '</div>' +
-            '</button>' +
-            '<div class="cardOverlayContainer"></div>' +
+            '</' + tag + '>' +
+            '<div class="cardOverlayContainer"' + (cat.href ? ' style="pointer-events:none;"' : '') + '></div>' +
             '</div>' +
-            '<div class="cardText cardTextCentered cardText-first"><bdi>' + cat.items.length + ' titles</bdi></div>' +
+            '<div class="cardText cardTextCentered cardText-first"><bdi>' + esc(cat.subtitle == null ? cat.items.length + ' titles' : cat.subtitle) + '</bdi></div>' +
             '</div></div>';
     }
 
-    function rowElement(key, title, cats) {
+    function rowElement(key, title, cats, images) {
+        images = images || categoryImages(cats);
         var section = document.createElement('div');
         section.className = 'verticalSection hf-section';
         section.setAttribute(ROW_ATTR, key);
@@ -161,9 +230,10 @@
             '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2></div>' +
             '<div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">' +
             '<div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x">' +
-            cats.map(cardHtml).join('') +
+            cats.map(function (cat, idx) { return cardHtml(cat, idx, images[idx], key === 'collections'); }).join('') +
             '</div></div>';
         section.addEventListener('click', function (e) {
+            if (key === 'collections') return;
             var card = e.target.closest('[data-hf-index]');
             if (!card) return;
             e.preventDefault();
@@ -415,7 +485,8 @@
     var builders = {
         genres: { title: 'Genres', build: genreCategories },
         ratings: { title: 'Ratings', build: ratingCategories },
-        release: { title: 'Release Date', build: releaseCategories }
+        release: { title: 'Release Date', build: releaseCategories },
+        collections: { title: 'Collections', build: collectionCategories }
     };
 
     var TWEAK_CSS = {
@@ -448,16 +519,30 @@
 
         building = true;
         injectStyles();
-        loadConfig().then(loadItems).then(function (items) {
-            if (sections.querySelector('[' + ROW_ATTR + ']') || !items.length) return;
+        loadConfig().then(function () {
+            var needsItems = config.Rows.some(function (r) { return r.Enabled && r.Key !== 'collections' && builders[r.Key]; });
+            return Promise.all([needsItems ? loadItems() : Promise.resolve([]), loadCollections()]);
+        }).then(function (results) {
+            var items = results[0], collections = results[1];
+            if (sections.querySelector('[' + ROW_ATTR + ']')) return;
+            var rows = [];
             config.Rows.forEach(function (r) {
                 var b = builders[r.Key];
                 if (!r.Enabled || !b) return;
-                var cats = b.build(items).filter(function (cat) { return cat.items.length; });
+                var cats = b.build(r.Key === 'collections' ? collections : items).filter(function (cat) { return cat.items.length; });
                 if (!cats.length) return;
-                var row = rowElement(r.Key, b.title, cats);
-                row.setAttribute('data-hf-pos', r.Position || 'bottom');
-                placeRow(row, sections, r.Position || 'bottom');
+                rows.push({ key: r.Key, title: b.title, cats: cats, position: r.Position || 'bottom' });
+            });
+            // Allocate together so overlapping categories in different rows can trade images.
+            var cats = [];
+            rows.forEach(function (r) { cats = cats.concat(r.cats); });
+            var images = categoryImages(cats);
+            var offset = 0;
+            rows.forEach(function (r) {
+                var row = rowElement(r.key, r.title, r.cats, images.slice(offset, offset + r.cats.length));
+                offset += r.cats.length;
+                row.setAttribute('data-hf-pos', r.position);
+                placeRow(row, sections, r.position);
                 if (window.CustomElements && window.CustomElements.upgradeSubtree) window.CustomElements.upgradeSubtree(row);
             });
         }).catch(function (err) {
