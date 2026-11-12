@@ -90,7 +90,8 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
-        run: node scripts/create-manifest.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" "artifacts/HomeFusion_${RELEASE_VERSION}.zip" artifacts/manifest.json
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/create-manifest.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" "artifacts/HomeFusion_${RELEASE_VERSION}.zip" artifacts/manifest.json --include-release-history
 
       - name: Push generated release tag
         if: github.event_name == 'workflow_dispatch'

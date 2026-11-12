@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -71,7 +72,50 @@ export function resolveReleaseTag(existingTags, requestedVersion = '', resumeTag
     throw new Error('Cannot automatically increment the release version beyond v65534.65534.65534.');
 }
 
-export function createManifest({ repository, tag, archiveName, archiveBytes, projectXml, now = new Date() }) {
+function releaseLink(repository, tag) {
+    return `[View release on GitHub](https://github.com/${repository}/releases/tag/${tag})`;
+}
+
+export function collectReleaseHistory({ repository, currentTag, releases, downloadManifest }) {
+    const history = [];
+    for (const release of releases) {
+        if (release.draft || release.prerelease || release.tag_name === currentTag) continue;
+        let parsed;
+        try {
+            parsed = parseReleaseTag(release.tag_name);
+        } catch {
+            continue;
+        }
+        const archive = `HomeFusion_${parsed.version}.zip`;
+        if (!release.assets.some(asset => asset.name === 'manifest.json') ||
+            !release.assets.some(asset => asset.name === archive)) {
+            throw new Error(`Published release ${release.tag_name} is missing its manifest or plugin ZIP.`);
+        }
+        const manifest = JSON.parse(downloadManifest(release.tag_name));
+        if (!Array.isArray(manifest)) throw new Error(`Invalid manifest for ${release.tag_name}.`);
+        const plugin = manifest.find(entry => entry.guid === '8c6f0a52-3b5e-4d8a-9a3e-6a1f2b7c4d10');
+        const matches = Array.isArray(plugin?.versions)
+            ? plugin.versions.filter(entry => entry.version === parsed.manifestVersion) : [];
+        const entry = matches[0];
+        const expectedUrl = `https://github.com/${repository}/releases/download/${release.tag_name}/${archive}`;
+        if (matches.length !== 1 || entry.sourceUrl !== expectedUrl ||
+            !/^[a-f0-9]{32}$/i.test(entry.checksum) ||
+            !/^\d+\.\d+\.\d+\.\d+$/.test(entry.targetAbi) ||
+            !entry.timestamp || Number.isNaN(Date.parse(entry.timestamp)) ||
+            (entry.changelog != null && typeof entry.changelog !== 'string')) {
+            throw new Error(`Invalid version metadata in manifest for ${release.tag_name}.`);
+        }
+        if (history.some(previous => previous.version === entry.version)) {
+            throw new Error(`Duplicate published release version ${entry.version}.`);
+        }
+        const link = releaseLink(repository, release.tag_name);
+        const changelog = entry.changelog || '';
+        history.push({ ...entry, changelog: changelog.includes(link) ? changelog : [changelog, link].filter(Boolean).join('\n\n') });
+    }
+    return history;
+}
+
+export function createManifest({ repository, tag, archiveName, archiveBytes, projectXml, now = new Date(), previousVersions = [] }) {
     const { version, manifestVersion } = parseReleaseTag(tag);
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
         throw new Error('Repository must be GitHub OWNER/REPOSITORY.');
@@ -84,6 +128,27 @@ export function createManifest({ repository, tag, archiveName, archiveBytes, pro
     if (!controllerVersion || controllerVersion !== modelVersion) {
         throw new Error('Expected matching pinned Jellyfin.Controller and Jellyfin.Model package versions.');
     }
+    if (!Array.isArray(previousVersions) || previousVersions.some(entry =>
+        !entry || !/^\d+\.\d+\.\d+\.\d+$/.test(entry.version) || entry.version === manifestVersion)) {
+        throw new Error('Previous versions must have valid, distinct version numbers.');
+    }
+    if (new Set(previousVersions.map(entry => entry.version)).size !== previousVersions.length) {
+        throw new Error('Previous versions must have valid, distinct version numbers.');
+    }
+    const versions = [{
+        version: manifestVersion,
+        changelog: `HomeFusion ${version}.\n\n${releaseLink(repository, tag)}`,
+        targetAbi: `${controllerVersion}.0`,
+        sourceUrl: `https://github.com/${repository}/releases/download/${tag}/${archiveName}`,
+        // Jellyfin's plugin installer expects MD5, not SHA-256. Hash the exact uploaded ZIP bytes.
+        checksum: createHash('md5').update(archiveBytes).digest('hex'),
+        timestamp: now.toISOString()
+    }, ...previousVersions];
+    versions.sort((left, right) => {
+        const a = left.version.split('.').map(Number), b = right.version.split('.').map(Number);
+        for (let i = 0; i < 4; i += 1) if (a[i] !== b[i]) return b[i] - a[i];
+        return 0;
+    });
     return [{
         guid: '8c6f0a52-3b5e-4d8a-9a3e-6a1f2b7c4d10',
         name: 'HomeFusion',
@@ -92,26 +157,32 @@ export function createManifest({ repository, tag, archiveName, archiveBytes, pro
         owner: repository.split('/')[0],
         category: 'General',
         imageUrl: `https://github.com/${repository}/releases/download/${tag}/homefusion.png`,
-        versions: [{
-            version: manifestVersion,
-            changelog: `HomeFusion ${version}. See https://github.com/${repository}/releases/tag/${tag} for release notes and setup instructions.`,
-            targetAbi: `${controllerVersion}.0`,
-            sourceUrl: `https://github.com/${repository}/releases/download/${tag}/${archiveName}`,
-            // Jellyfin's plugin installer expects MD5, not SHA-256. Hash the exact uploaded ZIP bytes.
-            checksum: createHash('md5').update(archiveBytes).digest('hex'),
-            timestamp: now.toISOString()
-        }]
+        versions
     }];
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-    const [repository, tag, archivePath, outputPath] = process.argv.slice(2);
-    if (!repository || !tag || !archivePath || !outputPath || process.argv.length !== 6) {
-        throw new Error('Usage: node scripts/create-manifest.mjs OWNER/REPO vX.Y.Z ARCHIVE_PATH OUTPUT_PATH');
+    const [repository, tag, archivePath, outputPath, historyFlag] = process.argv.slice(2);
+    if (!repository || !tag || !archivePath || !outputPath ||
+        (historyFlag && historyFlag !== '--include-release-history') || process.argv.length > 7) {
+        throw new Error('Usage: node scripts/create-manifest.mjs OWNER/REPO vX.Y.Z ARCHIVE_PATH OUTPUT_PATH [--include-release-history]');
     }
     const projectXml = readFileSync(new URL('../Jellyfin.Plugin.HomeFusion/Jellyfin.Plugin.HomeFusion.csproj', import.meta.url), 'utf8');
+    let previousVersions = [];
+    if (historyFlag) {
+        if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
+            throw new Error('Repository must be GitHub OWNER/REPOSITORY.');
+        }
+        const pages = JSON.parse(execFileSync('gh', ['api', '--paginate', '--slurp',
+            `repos/${repository}/releases?per_page=100`], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }));
+        previousVersions = collectReleaseHistory({
+            repository, currentTag: tag, releases: pages.flat(),
+            downloadManifest: releaseTag => execFileSync('gh', ['release', 'download', releaseTag,
+                '--repo', repository, '--pattern', 'manifest.json', '--output', '-'], { encoding: 'utf8' })
+        });
+    }
     const manifest = createManifest({ repository, tag, archiveName: basename(archivePath),
-        archiveBytes: readFileSync(archivePath), projectXml });
+        archiveBytes: readFileSync(archivePath), projectXml, previousVersions });
     writeFileSync(outputPath, JSON.stringify(manifest, null, 2) + '\n');
-    console.log(`Created ${outputPath} for ${tag}, ABI ${manifest[0].versions[0].targetAbi}`);
+    console.log(`Created ${outputPath} for ${tag}, with ${manifest[0].versions.length} release(s).`);
 }

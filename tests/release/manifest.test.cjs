@@ -30,7 +30,77 @@ test('generates a Jellyfin repository array with pinned asset URL, ABI and exact
     assert.equal(release.checksum, createHash('md5').update(input.archiveBytes).digest('hex'));
     assert.match(release.checksum, /^[a-f0-9]{32}$/);
     assert.equal(release.timestamp, '2026-11-05T12:00:00.000Z');
+    assert.match(release.changelog, /\[View release on GitHub\]\(https:\/\/github\.com\/MFerretti27\/HomeFusion\/releases\/tag\/v1\.2\.3\)/);
     assert.deepEqual(JSON.parse(JSON.stringify(manifest)), manifest);
+});
+
+test('recovers all published stable release metadata and links each changelog', async () => {
+    const { collectReleaseHistory, createManifest } = await modulePromise;
+    const prior = ['1.0.0', '1.0.1', '1.0.10'].map(version => {
+        const tag = `v${version}`;
+        const manifest = createManifest({
+            ...input, tag, archiveName: `HomeFusion_${version}.zip`,
+            now: new Date('2026-01-01T00:00:00Z')
+        });
+        manifest[0].versions[0].changelog = `Old release notes for ${tag}`;
+        return { tag, manifest };
+    });
+    const releases = prior.map(({ tag }) => ({
+        tag_name: tag, draft: false, prerelease: false,
+        assets: [{ name: 'manifest.json' }, { name: `HomeFusion_${tag.slice(1)}.zip` }]
+    }));
+    releases.push({ tag_name: 'v1.2.3', draft: true, assets: [] },
+        { tag_name: 'v1.1.0', prerelease: true, assets: [] },
+        { tag_name: 'v1.2.0-beta', draft: false, prerelease: false, assets: [] });
+    const previousVersions = collectReleaseHistory({
+        repository: input.repository, currentTag: input.tag, releases,
+        downloadManifest: tag => JSON.stringify(prior.find(item => item.tag === tag).manifest)
+    });
+    const result = createManifest({ ...input, previousVersions })[0].versions;
+    assert.deepEqual(result.map(version => version.version), ['1.2.3.0', '1.0.10.0', '1.0.1.0', '1.0.0.0']);
+    for (const { tag, manifest } of prior) {
+        const original = manifest[0].versions[0];
+        const recovered = result.find(entry => entry.version === original.version);
+        assert.equal(recovered.sourceUrl, original.sourceUrl);
+        assert.equal(recovered.checksum, original.checksum);
+        assert.equal(recovered.targetAbi, original.targetAbi);
+        assert.equal(recovered.timestamp, original.timestamp);
+        assert.equal(recovered.changelog,
+            `Old release notes for ${tag}\n\n[View release on GitHub](https://github.com/${input.repository}/releases/tag/${tag})`);
+    }
+});
+
+test('handles first releases, current draft reruns and previously linked changelogs', async () => {
+    const { collectReleaseHistory, createManifest } = await modulePromise;
+    assert.deepEqual(collectReleaseHistory({
+        repository: input.repository, currentTag: input.tag,
+        releases: [{ tag_name: input.tag, draft: true, assets: [] }],
+        downloadManifest: () => assert.fail('No published history to download')
+    }), []);
+    const release = { tag_name: 'v1.0.1', assets: [{ name: 'manifest.json' }, { name: 'HomeFusion_1.0.1.zip' }] };
+    const manifest = createManifest({ ...input, tag: release.tag_name, archiveName: 'HomeFusion_1.0.1.zip' });
+    const history = collectReleaseHistory({
+        repository: input.repository, currentTag: input.tag, releases: [release],
+        downloadManifest: () => JSON.stringify(manifest)
+    });
+    assert.equal(history[0].changelog, manifest[0].versions[0].changelog);
+});
+
+test('fails instead of silently publishing incomplete or invalid release history', async () => {
+    const { collectReleaseHistory, createManifest } = await modulePromise;
+    const release = { tag_name: 'v1.0.1', assets: [{ name: 'manifest.json' }, { name: 'HomeFusion_1.0.1.zip' }] };
+    const manifest = createManifest({ ...input, tag: release.tag_name, archiveName: 'HomeFusion_1.0.1.zip' });
+    const options = { repository: input.repository, currentTag: input.tag, releases: [release],
+        downloadManifest: () => JSON.stringify(manifest) };
+    assert.throws(() => collectReleaseHistory({ ...options, releases: [{ ...release, assets: [] }] }), /missing/);
+    assert.throws(() => collectReleaseHistory({ ...options, downloadManifest: () => 'not JSON' }));
+    assert.throws(() => collectReleaseHistory({ ...options, downloadManifest: () => '[]' }), /Invalid version metadata/);
+    const wrongUrl = structuredClone(manifest);
+    wrongUrl[0].versions[0].sourceUrl = 'https://example.com/archive.zip';
+    assert.throws(() => collectReleaseHistory({ ...options, downloadManifest: () => JSON.stringify(wrongUrl) }), /Invalid version metadata/);
+    assert.throws(() => collectReleaseHistory({ ...options, releases: [release, release] }), /Duplicate/);
+    assert.throws(() => createManifest({ ...input, previousVersions: [manifest[0].versions[0], manifest[0].versions[0]] }), /distinct/);
+    assert.throws(() => createManifest({ ...input, previousVersions: [createManifest(input)[0].versions[0]] }), /distinct/);
 });
 
 test('only stable canonical version tags are accepted', async () => {

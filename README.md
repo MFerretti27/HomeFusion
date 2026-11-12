@@ -65,4 +65,4 @@ dotnet test tests/HomeFusion.Tests/HomeFusion.Tests.csproj
 
 ## Releasing
 
-Push a `vX.Y.Z` tag, or run the **Publish Jellyfin plugin** workflow manually (optionally with a version; otherwise the patch version is bumped). The workflow tests, builds `HomeFusion_X.Y.Z.zip`, generates `manifest.json` and publishes a GitHub release.
+Push a `vX.Y.Z` tag, or run the **Publish Jellyfin plugin** workflow manually (optionally with a version; otherwise the patch version is bumped). The workflow tests, builds `HomeFusion_X.Y.Z.zip`, generates `manifest.json` and publishes a GitHub release. The manifest includes all published stable releases, using each release's existing manifest and ZIP; it fails if either asset or its version metadata is missing. Drafts and prereleases are excluded. Existing release assets are not changed, so catalog updates appear after the next release is published. The local build produces a single-version manifest preview.
