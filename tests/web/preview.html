@@ -70,10 +70,10 @@
     getCurrentUserId: () => 'u', accessToken: () => 't', serverId: () => 's',
     getUrl: p => p,
     ajax: async () => ({ Rows: [
+      { Key: 'collections', Enabled: true, Position: 'after-my-media' },
       { Key: 'genres', Enabled: true, Position: 'bottom' },
       { Key: 'ratings', Enabled: true, Position: 'bottom' },
-      { Key: 'release', Enabled: true, Position: 'bottom' },
-      { Key: 'collections', Enabled: true, Position: 'after-my-media' }],
+      { Key: 'release', Enabled: true, Position: 'bottom' }],
       RandomizeGenres: true, RandomizeCollections: true, HiddenGenres: 'Documentary', IncludeMovies: true, IncludeSeries: false }),
     markPlayed: async()=>{}, markUnplayed: async()=>{}, updateFavoriteStatus: async()=>{},
     getItems: async (userId, options) => ({ Items: options.IncludeItemTypes === 'BoxSet' ?

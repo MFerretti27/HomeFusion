@@ -4,13 +4,17 @@ const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 
 const source = readFileSync('Jellyfin.Plugin.HomeFusion/Web/homefusion.js', 'utf8');
+const controller = readFileSync('Jellyfin.Plugin.HomeFusion/Api/HomeFusionController.cs', 'utf8');
+const configuredRowOrder = [...controller.matchAll(/new \{ Key = "([^"]+)", Enabled = c\.\w+, Position = c\.\w+ \}/g)]
+    .map(match => match[1]);
 
 function setup({ enabled = true, randomize = false, collections = [], items = [], position = 'bottom', otherRows = [] } = {}) {
     const calls = [];
     const rows = [];
     const errors = [];
+    const configuredRows = [{ Key: 'collections', Enabled: enabled, Position: position }, ...otherRows];
     const cfg = {
-        Rows: [...otherRows, { Key: 'collections', Enabled: enabled, Position: position }],
+        Rows: configuredRowOrder.map(key => configuredRows.find(row => row.Key === key)).filter(Boolean),
         RandomizeCollections: randomize
     };
     const sections = {
@@ -161,6 +165,7 @@ test('other rows still render when the user has no collections', async () => {
 });
 
 test('coordinates unique images across genres, ratings, release dates and collections', async () => {
+    assert.deepEqual(configuredRowOrder, ['collections', 'genres', 'ratings', 'release']);
     const items = Array.from({ length: 8 }, (_, index) => ({
         Id: `movie${index}`, Genres: ['Action'], CommunityRating: 9,
         ProductionYear: 2020, BackdropImageTags: ['tag']
@@ -173,12 +178,12 @@ test('coordinates unique images across genres, ratings, release dates and collec
     client.tryInject();
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(errors, []);
-    assert.deepEqual(rows.map(row => row.attributes['data-homefusion']), ['genres', 'ratings', 'release', 'collections']);
+    assert.deepEqual(rows.map(row => row.attributes['data-homefusion']), ['collections', 'genres', 'ratings', 'release']);
     const images = rows.flatMap(row =>
         [...row.innerHTML.matchAll(/background-image:url\('([^']+)'\)/g)].map(match => match[1]));
     assert.equal(images.length, 6);
     assert.equal(new Set(images).size, 6);
-    assert.match(rows[3].innerHTML, /movie0\/Backdrop/);
+    assert.match(rows[0].innerHTML, /movie0\/Backdrop/);
 });
 
 test('repeats across rows only when the matching library has too few images', async () => {

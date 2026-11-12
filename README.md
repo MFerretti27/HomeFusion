@@ -51,6 +51,8 @@ You can also hide specific genres (e.g. Documentary or TV Movie) from the Genres
 
 Enable the Collections row to show the current user's collections, independently of the movie/series filters. Its settings include a row position and a separate option to randomize collection order each time Home loads.
 
+Rows sharing a position appear in this order: Collections, Genres, Ratings, Release Date.
+
 **Interface tweaks** (all off by default): hide the SyncPlay button, hide the Cast / Play On button, round poster and card corners, and hide the "My Media" section title.
 
 ## Development
