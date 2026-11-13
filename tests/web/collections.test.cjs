@@ -13,6 +13,8 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
     const rows = [];
     const overlays = [];
     const errors = [];
+    const timers = [];
+    const windowListeners = new Map();
     const configuredRows = [{ Key: 'collections', Enabled: enabled, Position: position }, ...otherRows];
     const cfg = {
         Rows: configuredRowOrder.map(key => configuredRows.find(row => row.Key === key)).filter(Boolean),
@@ -26,8 +28,10 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
     };
     const context = vm.createContext({
         window: {
-            addEventListener() {},
-            removeEventListener() {},
+            addEventListener(event, listener) { windowListeners.set(event, listener); },
+            removeEventListener(event, listener) {
+                if (windowListeners.get(event) === listener) windowListeners.delete(event);
+            },
             ApiClient: {
                 getCurrentUserId: () => 'user',
                 accessToken: () => 'token',
@@ -44,6 +48,8 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
             createElement: () => ({
                 attributes: {},
                 listeners: {},
+                removed: false,
+                remove() { this.removed = true; },
                 setAttribute(key, value) { this.attributes[key] = value; },
                 addEventListener(key, listener) { this.listeners[key] = listener; },
                 querySelector(selector) {
@@ -54,7 +60,7 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
             })
         },
         console: { warn: (...args) => errors.push(args) },
-        setTimeout() {},
+        setTimeout(callback) { timers.push(callback); },
         requestAnimationFrame() {},
         Math: Object.assign(Object.create(Math), { random: () => 0 })
     });
@@ -67,7 +73,7 @@ function setup({ enabled = true, randomize = false, collections = [], items = []
         injectStyles = function () {};
         globalThis.client = { loadCollections, collectionCategories, rowElement, openCategory, tryInject, placeRow };
     })();`, context);
-    return { client: context.client, calls, rows, overlays, errors, cfg };
+    return { client: context.client, calls, rows, overlays, errors, cfg, timers, windowListeners };
 }
 
 const collections = [
@@ -103,13 +109,34 @@ test('preserves alphabetical API order by default and shuffles only when enabled
     }
 });
 
+test('collections heading button opens a grid containing all collection cards', () => {
+    const { client, overlays } = setup();
+    const cats = client.collectionCategories(collections);
+    const row = client.rowElement('collections', 'Collections', cats);
+    assert.match(row.innerHTML, /class="paper-icon-button-light hf-view-all" title="View all collections"/);
+    let prevented = false;
+    let stopped = false;
+    row.listeners.click({
+        target: { closest: selector => selector === '.hf-view-all' ? {} : null },
+        preventDefault() { prevented = true; },
+        stopPropagation() { stopped = true; }
+    });
+    assert.equal(prevented, true);
+    assert.equal(stopped, true);
+    assert.match(overlays[0].innerHTML, /hf-header[\s\S]*Collections/);
+    assert.match(overlays[0].innerHTML, /Alpha &amp; friends/);
+    assert.match(overlays[0].innerHTML, /Beta/);
+    assert.match(overlays[0].innerHTML, /Gamma/);
+    assert.equal((overlays[0].innerHTML.match(/overflowPortraitCard/g) || []).length, collections.length);
+});
+
 test('renders collection names below the artwork with child counts and native details links', () => {
     const { client } = setup();
     const row = client.rowElement('collections', 'Collections', client.collectionCategories(collections));
     assert.doesNotMatch(row.innerHTML, /class="hf-label"/);
-    assert.match(row.innerHTML, /cardText-first"><bdi>Alpha &amp; friends<\/bdi>/);
+    assert.match(row.innerHTML, /cardText-first hf-collection-name"><bdi>Alpha &amp; friends<\/bdi>/);
     assert.match(row.innerHTML, /cardText-secondary"><bdi>3 titles<\/bdi>/);
-    assert.match(row.innerHTML, /cardText-first"><bdi>Beta<\/bdi>/);
+    assert.match(row.innerHTML, /cardText-first hf-collection-name"><bdi>Beta<\/bdi>/);
     assert.match(row.innerHTML, /cardText-secondary"><bdi>0 titles<\/bdi>/);
     assert.match(row.innerHTML, /<bdi>Collection<\/bdi>/);
     assert.match(row.innerHTML, /alpha\/Backdrop/);
@@ -121,6 +148,7 @@ test('renders collection names below the artwork with child counts and native de
     assert.match(row.innerHTML, /<a href="#\/details\?id=alpha&amp;serverId=server"/);
     assert.match(row.innerHTML, /class="cardOverlayContainer" style="pointer-events:none;"/);
     row.listeners.click({
+        target: { closest() { return null; } },
         preventDefault() { assert.fail('Collection navigation must not be prevented'); },
         stopPropagation() { assert.fail('Collection navigation must not be stopped'); }
     });
@@ -149,6 +177,31 @@ test('play buttons include playback position for native Jellyfin resume handling
     }]);
     assert.match(overlays[0].innerHTML, /data-positionticks="12345"/);
     assert.match(overlays[0].innerHTML, /data-action="resume" title="Play"/);
+});
+
+test('play and resume dismiss the category overlay after native click handling, while More keeps it open', () => {
+    for (const action of ['resume', 'play', 'menu']) {
+        const { client, overlays, timers, windowListeners } = setup();
+        client.openCategory('Genres: Action', [{ Id: 'movie', Name: 'Movie', Type: 'Movie' }]);
+        const overlay = overlays[0];
+        const card = { getAttribute: () => 'movie' };
+        const button = {
+            getAttribute: name => name === 'data-action' ? action : null,
+            hasAttribute: () => false
+        };
+        // A click on the inner play icon must resolve to the containing button.
+        overlay.gridListener({
+            target: { closest: selector => selector === '[data-hf-item]' ? card : selector === 'button' ? button : null },
+            preventDefault() { assert.fail('Native action must not be prevented'); },
+            stopImmediatePropagation() { assert.fail('Native action must receive the click'); }
+        });
+        assert.equal(overlay.removed, false, 'Keep the grid attached during native click handling');
+        assert.equal(windowListeners.has('hashchange'), true);
+        assert.equal(timers.length, action === 'menu' ? 0 : 1);
+        timers.forEach(callback => callback());
+        assert.equal(overlay.removed, action !== 'menu');
+        assert.equal(windowListeners.has('hashchange'), action === 'menu');
+    }
 });
 
 test('injects collections without movie or series items and applies the chosen position', async () => {

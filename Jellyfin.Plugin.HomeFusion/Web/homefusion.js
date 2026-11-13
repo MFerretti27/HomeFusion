@@ -218,7 +218,7 @@
             '</' + tag + '>' +
             '<div class="cardOverlayContainer"' + (cat.href ? ' style="pointer-events:none;"' : '') + '></div>' +
             '</div>' +
-            '<div class="cardText cardTextCentered cardText-first"><bdi>' + esc(primaryText) + '</bdi></div>' +
+            '<div class="cardText cardTextCentered cardText-first' + (portrait ? ' hf-collection-name' : '') + '"><bdi>' + esc(primaryText) + '</bdi></div>' +
             (portrait ? '<div class="cardText cardTextCentered cardText-secondary"><bdi>' + esc(subtitle) + '</bdi></div>' : '') +
             '</div></div>';
     }
@@ -230,13 +230,23 @@
         section.setAttribute(ROW_ATTR, key);
         section.innerHTML =
             '<div class="sectionTitleContainer sectionTitleContainer-cards padded-left">' +
-            '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2></div>' +
+            '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2>' +
+            (key === 'collections' ? '<button type="button" is="paper-icon-button-light" class="paper-icon-button-light hf-view-all" title="View all collections" aria-label="View all collections">' +
+                '<span class="material-icons chevron_right" aria-hidden="true"></span></button>' : '') +
+            '</div>' +
             '<div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">' +
             '<div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x">' +
             cats.map(function (cat, idx) { return cardHtml(cat, idx, images[idx], key === 'collections'); }).join('') +
             '</div></div>';
         section.addEventListener('click', function (e) {
-            if (key === 'collections') return;
+            if (key === 'collections') {
+                if (e.target.closest('.hf-view-all')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openCollections(title, cats, images);
+                }
+                return;
+            }
             var card = e.target.closest('[data-hf-index]');
             if (!card) return;
             e.preventDefault();
@@ -246,6 +256,28 @@
         }, true);
         requestAnimationFrame(function () { addScrollButtons(section); });
         return section;
+    }
+
+    function openCollections(title, collections, images) {
+        var overlay = document.createElement('div');
+        overlay.className = 'hf-overlay';
+        overlay.innerHTML =
+            '<div class="hf-header"><button is="paper-icon-button-light" class="hf-close paper-icon-button-light" title="Close">' +
+            '<span class="material-icons arrow_back" aria-hidden="true"></span></button>' +
+            '<h2 class="sectionTitle">' + esc(title) + '</h2></div>' +
+            '<div is="emby-itemscontainer" class="hf-grid itemsContainer vertical-wrap padded-left padded-right">' +
+            collections.map(function (collection, index) {
+                return cardHtml(collection, index, images[index], true);
+            }).join('') +
+            '</div>';
+        function close() { overlay.remove(); window.removeEventListener('hashchange', close); }
+        overlay.querySelector('.hf-close').addEventListener('click', close);
+        overlay.querySelector('.hf-grid').addEventListener('click', function (e) {
+            if (e.target.closest('a')) setTimeout(close, 0);
+        }, true);
+        window.addEventListener('hashchange', close);
+        document.body.appendChild(overlay);
+        if (window.CustomElements && window.CustomElements.upgradeSubtree) window.CustomElements.upgradeSubtree(overlay);
     }
 
     // Mirror Jellyfin's emby-scrollbuttons (chevrons beside the row title) unless the
@@ -378,7 +410,9 @@
             var item = card && byId[card.getAttribute('data-hf-item')];
             var btn = e.target.closest('button');
             if (item && btn) {
-                // Play and More are handled by Jellyfin's itemscontainer; never navigate for them.
+                // Let Jellyfin handle playback before removing the overlay covering its player.
+                var action = btn.getAttribute('data-action');
+                if (action === 'resume' || action === 'play') setTimeout(close, 0);
                 if (!btn.hasAttribute('data-played') && !btn.hasAttribute('data-isfavorite')) return;
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -399,6 +433,7 @@
         s.id = 'hf-styles';
         s.textContent =
             '.hf-card{border:0;padding:0;cursor:pointer;width:100%;}' +
+            '.hf-collection-name{white-space:normal;overflow-wrap:normal;word-break:normal;overflow:visible;text-overflow:clip;}' +
             '.hf-card .hf-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;' +
             'background:linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.55));color:#fff;font-size:clamp(1em,1.6vw,1.6em);font-weight:600;overflow-wrap:anywhere;line-height:1.15;' +
             'text-shadow:0 2px 6px rgba(0,0,0,.8);text-align:center;padding:0 .5em;}' +
