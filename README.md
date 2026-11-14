@@ -49,11 +49,13 @@ Open **Dashboard → Home Fusion** (sidebar shortcut under Plugins). For each ro
 
 You can also hide specific genres (e.g. Documentary or TV Movie) from the Genres row, randomize the order of the genre cards (shuffled on each Home load), include movies and/or series.
 
-Enable the Collections row to show the current user's collections, independently of the movie/series filters. Its settings include a row position and a separate option to randomize collection order each time Home loads.
+Enable the Collections row to show the current user's collections, independently of the movie/series filters. Its settings include a row position, an option to randomize collection order each time Home loads, and a maximum number of collections on Home (0 means unlimited). The View all button always shows every collection.
+
+The Content settings can also hide title counts on cards across all four HomeFusion rows, including the collections grid. Counts are shown by default.
 
 Rows sharing a position appear in this order: Collections, Genres, Ratings, Release Date.
 
-**Interface tweaks** (all off by default): hide the SyncPlay button, hide the Cast / Play On button, round poster and card corners, and hide the "My Media" section title.
+**Interface tweaks** (all off by default): hide the SyncPlay button, hide the Cast / Play On button, round poster and card corners, hide the "My Media" section title or card labels, and hide standalone movie years on Jellyfin cards and movie years in HomeFusion grids without hiding TV show details.
 
 ## Development
 

@@ -15,11 +15,15 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public string ReleaseDatesPosition { get; set; } = "bottom";
     public bool ShowCollections { get; set; }
     public bool RandomizeCollections { get; set; }
+    public int MaxCollections { get; set; }
     public string CollectionsPosition { get; set; } = "bottom";
     public bool IncludeMovies { get; set; } = true;
     public bool IncludeSeries { get; set; }
+    public bool HideTitleCounts { get; set; }
     public bool HideSyncPlay { get; set; }
     public bool HideCast { get; set; }
     public bool RoundedPosters { get; set; }
     public bool HideMyMediaTitle { get; set; }
+    public bool HideCardSecondaryText { get; set; }
+    public bool HideMyMediaCardText { get; set; }
 }
