@@ -113,7 +113,8 @@ test('collections heading button opens a grid containing all collection cards', 
     const { client, overlays } = setup();
     const cats = client.collectionCategories(collections);
     const row = client.rowElement('collections', 'Collections', cats);
-    assert.match(row.innerHTML, /class="paper-icon-button-light hf-view-all" title="View all collections"/);
+    assert.match(row.innerHTML, /<button type="button" is="emby-button" class="button-flat button-flat-mini sectionTitleTextButton hf-view-all" title="View all collections" aria-label="View all collections">/);
+    assert.match(row.innerHTML, /<h2 class="sectionTitle sectionTitle-cards">Collections<\/h2><span class="material-icons chevron_right"/);
     let prevented = false;
     let stopped = false;
     row.listeners.click({
@@ -127,6 +128,47 @@ test('collections heading button opens a grid containing all collection cards', 
     assert.match(overlays[0].innerHTML, /Alpha &amp; friends/);
     assert.match(overlays[0].innerHTML, /Beta/);
     assert.match(overlays[0].innerHTML, /Gamma/);
+    assert.equal((overlays[0].innerHTML.match(/overflowPortraitCard/g) || []).length, collections.length);
+});
+
+test('limits only the home collections row, preserving order and all cards in View all', () => {
+    for (const randomize of [false, true]) {
+        for (const limit of [undefined, 0, 1, 2, 3, 10]) {
+            const { client, cfg, overlays } = setup({ randomize });
+            cfg.MaxCollections = limit;
+            const cats = client.collectionCategories(collections);
+            const row = client.rowElement('collections', 'Collections', cats);
+            const expected = limit > 0 ? Math.min(limit, cats.length) : cats.length;
+            assert.equal((row.innerHTML.match(/overflowPortraitCard/g) || []).length, expected);
+            cats.forEach((cat, index) => {
+                const name = cat.name.replace('&', '&amp;');
+                assert.equal(row.innerHTML.includes('<bdi>' + name + '</bdi>'), index < expected);
+            });
+            row.listeners.click({
+                target: { closest: selector => selector === '.hf-view-all' ? {} : null },
+                preventDefault() {}, stopPropagation() {}
+            });
+            assert.equal((overlays[0].innerHTML.match(/overflowPortraitCard/g) || []).length, cats.length);
+            assert.match(overlays[0].innerHTML, /alpha\/Backdrop/);
+            assert.match(overlays[0].innerHTML, /beta\/Primary/);
+            assert.match(overlays[0].innerHTML, /Gamma/);
+            const genreRow = client.rowElement('genres', 'Genres', cats);
+            assert.equal((genreRow.innerHTML.match(/overflowBackdropCard/g) || []).length, cats.length);
+        }
+    }
+});
+
+test('configured collection limit is applied during home injection', async () => {
+    const { client, cfg, rows, overlays, errors } = setup({ collections });
+    cfg.MaxCollections = 1;
+    client.tryInject();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(errors, []);
+    assert.equal((rows[0].innerHTML.match(/overflowPortraitCard/g) || []).length, 1);
+    rows[0].listeners.click({
+        target: { closest: selector => selector === '.hf-view-all' ? {} : null },
+        preventDefault() {}, stopPropagation() {}
+    });
     assert.equal((overlays[0].innerHTML.match(/overflowPortraitCard/g) || []).length, collections.length);
 });
 
@@ -167,6 +209,47 @@ test('collections prefer posters over backdrops while other rows stay landscape'
         assert.match(landscape.innerHTML, /poster\/Backdrop/);
         assert.doesNotMatch(landscape.innerHTML, /overflowPortraitCard/);
     }
+});
+
+test('title count setting applies to every row and the collections grid', () => {
+    for (const hideCounts of [false, true]) {
+        const { client, cfg, overlays } = setup();
+        cfg.HideTitleCounts = hideCounts;
+        const cats = client.collectionCategories(collections);
+        const row = client.rowElement('collections', 'Collections', cats);
+        assert.equal(row.innerHTML.includes('<bdi>3 titles</bdi>'), !hideCounts);
+        assert.equal(row.innerHTML.includes('<bdi>0 titles</bdi>'), !hideCounts);
+        assert.match(row.innerHTML, /<bdi>Alpha &amp; friends<\/bdi>/);
+        assert.match(row.innerHTML, /<bdi>Collection<\/bdi>/);
+        cfg.HideTitleCounts = !hideCounts;
+        row.listeners.click({
+            target: { closest: selector => selector === '.hf-view-all' ? {} : null },
+            preventDefault() {}, stopPropagation() {}
+        });
+        assert.equal(overlays[0].innerHTML.includes('<bdi>3 titles</bdi>'), !hideCounts);
+        assert.match(overlays[0].innerHTML, /<bdi>Alpha &amp; friends<\/bdi>/);
+        for (const key of ['genres', 'ratings', 'release']) {
+            cfg.HideTitleCounts = hideCounts;
+            const html = client.rowElement(key, key, [{ name: 'Category', items: [collections[0]] }]).innerHTML;
+            assert.equal(html.includes('<bdi>1 titles</bdi>'), !hideCounts);
+            assert.match(html, /class="hf-label">Category<\/div>/);
+        }
+    }
+});
+
+test('title count setting defaults to false and is exposed by the client configuration API', () => {
+    const configuration = readFileSync('Jellyfin.Plugin.HomeFusion/Configuration/PluginConfiguration.cs', 'utf8');
+    assert.match(configuration, /public bool HideTitleCounts \{ get; set; \}/);
+    assert.match(controller, /c\.HideTitleCounts/);
+    const { client } = setup();
+    const row = client.rowElement('genres', 'Genres', [{ name: 'Action', items: [collections[0]] }]);
+    assert.match(row.innerHTML, /<bdi>1 titles<\/bdi>/);
+});
+
+test('collection limit defaults to unlimited and is exposed by the client configuration API', () => {
+    const configuration = readFileSync('Jellyfin.Plugin.HomeFusion/Configuration/PluginConfiguration.cs', 'utf8');
+    assert.match(configuration, /public int MaxCollections \{ get; set; \}/);
+    assert.match(controller, /c\.MaxCollections/);
 });
 
 test('play buttons include playback position for native Jellyfin resume handling', () => {
@@ -294,14 +377,16 @@ test('collection rows use existing native section placement and fall back to bot
 test('collection settings load and save through the dashboard form', async () => {
     const html = readFileSync('Jellyfin.Plugin.HomeFusion/Configuration/configPage.html', 'utf8');
     const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map(match => [match[1], {
-        value: '', checked: false, addEventListener(event, listener) { this[event] = listener; },
+        _value: '', get value() { return this._value; }, set value(value) { this._value = String(value); },
+        checked: false, addEventListener(event, listener) { this[event] = listener; },
+        focus() {},
         append() {}, querySelectorAll: () => []
     }]));
     const form = { addEventListener(event, listener) { this[event] = listener; } };
     const page = elements.get('HomeFusionConfigPage');
     page.querySelector = selector => selector === 'form' ? form : elements.get(selector.slice(1));
     page.querySelectorAll = () => [];
-    const cfg = { ShowCollections: true, RandomizeCollections: false, CollectionsPosition: 'after-next-up', IncludeMovies: true };
+    const cfg = { ShowCollections: true, RandomizeCollections: false, CollectionsPosition: 'after-next-up', IncludeMovies: true, HideTitleCounts: true, MaxCollections: 2, HideCardSecondaryText: true, HideMyMediaCardText: true };
     let saved;
     const errors = [];
     vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], {
@@ -322,12 +407,164 @@ test('collection settings load and save through the dashboard form', async () =>
     assert.equal(elements.get('ShowCollections').checked, true);
     assert.equal(elements.get('RandomizeCollections').checked, false);
     assert.equal(elements.get('CollectionsPosition').value, 'after-next-up');
+    assert.equal(elements.get('HideTitleCounts').checked, true);
+    assert.equal(elements.get('HideCardSecondaryText').checked, true);
+    assert.equal(elements.get('HideMyMediaCardText').checked, true);
+    assert.equal(elements.get('MaxCollections').value, '2');
     elements.get('RandomizeCollections').checked = true;
     elements.get('CollectionsPosition').value = 'after-my-media';
+    elements.get('HideTitleCounts').checked = false;
+    elements.get('HideCardSecondaryText').checked = false;
+    elements.get('HideMyMediaCardText').checked = false;
+    elements.get('MaxCollections').value = '1';
     form.submit({ preventDefault() {} });
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(errors, []);
     assert.equal(saved.ShowCollections, true);
     assert.equal(saved.RandomizeCollections, true);
     assert.equal(saved.CollectionsPosition, 'after-my-media');
+    assert.equal(saved.HideTitleCounts, false);
+    assert.equal(saved.HideCardSecondaryText, false);
+    assert.equal(saved.HideMyMediaCardText, false);
+    assert.equal(saved.MaxCollections, 1);
+    for (const invalid of ['', '-1', '1.5', '2147483648']) {
+        saved = undefined;
+        elements.get('MaxCollections').value = invalid;
+        form.submit({ preventDefault() {} });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(saved, undefined);
+        assert.match(errors.pop(), /whole number/);
+    }
+    elements.get('MaxCollections').value = '0';
+    form.submit({ preventDefault() {} });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(saved.MaxCollections, 0);
+});
+
+test('card text tweaks apply only when enabled', async () => {
+    const configuration = readFileSync('Jellyfin.Plugin.HomeFusion/Configuration/PluginConfiguration.cs', 'utf8');
+    for (const [key, css] of [
+        ['HideCardSecondaryText', '.hf-native-movie-year,.hf-movie-year{display:none !important;}'],
+        ['HideMyMediaTitle', '.hf-my-media > .sectionTitle,.hf-my-media > .verticalSection > .sectionTitle{visibility:hidden !important;}'],
+        ['HideMyMediaCardText', '.hf-my-media .cardText{visibility:hidden !important;}']
+    ]) {
+        assert.match(configuration, new RegExp(`public bool ${key} \\{ get; set; \\}`));
+        assert.match(controller, new RegExp(`c\\.${key}`));
+        for (const enabled of [undefined, false, true]) {
+            let style;
+            const context = vm.createContext({
+                document: {
+                    getElementById: () => null,
+                    createElement: () => ({}),
+                    querySelector: () => null,
+                    querySelectorAll: () => [],
+                    head: { appendChild(element) { style = element; } }
+                }
+            });
+
+            context.testConfig = { [key]: enabled };
+            vm.runInContext(source.slice(0, source.indexOf('    new MutationObserver')) + `
+                config = testConfig;
+                globalThis.applyTweaks = applyTweaks;
+            })();`, context);
+            context.applyTweaks();
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(style.textContent, enabled ? css : '');
+        }
+    }
+});
+
+test('movie year detection only marks standalone years on native movie cards', () => {
+    function text(value) {
+        const classes = new Set();
+        return {
+            textContent: value, classes,
+            classList: {
+                contains: name => classes.has(name),
+                add: name => classes.add(name),
+                remove: name => classes.delete(name)
+            }
+        };
+    }
+    const movieYear = text('2024');
+    const localizedYear = text('٢٠٢٤');
+    const movieDetails = text('2024 • 8.2');
+    const selectors = [];
+    const context = vm.createContext({
+        document: { querySelectorAll(selector) {
+            selectors.push(selector);
+            return [movieYear, localizedYear, movieDetails];
+        } }
+    });
+    vm.runInContext(source.slice(0, source.indexOf('    new MutationObserver')) + `
+        hideMovieYears = true;
+        globalThis.markMovieYears = markMovieYears;
+    })();`, context);
+    context.markMovieYears();
+    assert.deepEqual(selectors, ['.card[data-type="Movie"] .cardText.cardText-secondary']);
+    assert.equal(movieYear.classes.has('hf-native-movie-year'), true);
+    assert.equal(localizedYear.classes.has('hf-native-movie-year'), true);
+    assert.equal(movieDetails.classes.has('hf-native-movie-year'), false);
+    movieYear.textContent = 'New details';
+    context.markMovieYears();
+    assert.equal(movieYear.classes.has('hf-native-movie-year'), false);
+});
+
+test('HomeFusion grid marks movie years without hiding ratings or TV years', () => {
+    const { client, overlays } = setup();
+    client.openCategory('Titles', [
+        { Id: 'movie', Name: 'Movie', Type: 'Movie', ProductionYear: 2024, CommunityRating: 8.5 },
+        { Id: 'tv', Name: 'Show', Type: 'Series', ProductionYear: 2023, CommunityRating: 7.5 }
+    ]);
+    assert.match(overlays[0].innerHTML, /<span class="hf-movie-year">2024 • <\/span>★ 8\.5/);
+    assert.match(overlays[0].innerHTML, /<span>2023 • <\/span>★ 7\.5/);
+});
+
+test('My Media targeting follows library content instead of row position and survives rerendering', () => {
+    function section({ title, library = false, plugin = false }) {
+        const classes = new Set();
+        return {
+            title, library, plugin, classes,
+            classList: {
+                contains: name => classes.has(name),
+                add: name => classes.add(name),
+                remove: name => classes.delete(name)
+            },
+            hasAttribute: () => plugin,
+            querySelector(selector) {
+                if (selector === '.sectionTitle') return this.title ? { textContent: this.title } : null;
+                return this.library && selector.includes(this.library) ? {} : null;
+            }
+        };
+    }
+    const context = vm.createContext({
+        window: { Globalize: { translate: key => key === 'HeaderMyMedia' ? 'Mes médias' : key } }
+    });
+    vm.runInContext(source.slice(0, source.indexOf('    new MutationObserver')) + `
+        myMediaTweaksEnabled = true;
+        globalThis.markMyMediaSections = markMyMediaSections;
+    })();`, context);
+    const first = section({ title: 'Continue Watching' });
+    const library = section({ title: 'Bibliothèque', library: '.homeLibraryButtonContainer' });
+    const plugin = section({ title: 'My Media', plugin: true });
+    const sections = { children: [first, library, plugin] };
+    context.markMyMediaSections(sections);
+    assert.equal(first.classes.has('hf-my-media'), false);
+    assert.equal(library.classes.has('hf-my-media'), true);
+    assert.equal(plugin.classes.has('hf-my-media'), false);
+
+    library.library = false;
+    library.title = 'Latest Movies';
+    const replaced = section({ title: 'Mes médias' });
+    sections.children = [replaced, library, first, plugin];
+    context.markMyMediaSections(sections);
+    assert.equal(replaced.classes.has('hf-my-media'), true);
+    assert.equal(library.classes.has('hf-my-media'), false);
+    replaced.title = 'Bibliothèque';
+    replaced.library = '.card[data-type="CollectionFolder"]';
+    context.markMyMediaSections(sections);
+    assert.equal(replaced.classes.has('hf-my-media'), true);
+    replaced.library = '.card[data-type="UserView"]';
+    context.markMyMediaSections(sections);
+    assert.equal(replaced.classes.has('hf-my-media'), true);
 });

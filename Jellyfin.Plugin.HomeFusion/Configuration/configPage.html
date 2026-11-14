@@ -54,6 +54,7 @@
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="ShowCollections"><span>Show Collections row</span></label></div>
                 <div class="selectContainer"><label class="selectLabel" for="CollectionsPosition">Position</label><select is="emby-select" id="CollectionsPosition" class="hfPosition"></select></div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="RandomizeCollections"><span>Randomize order of collection cards</span></label><div class="fieldDescription">Shuffles the collection cards each time Home loads. Otherwise collections are sorted by name.</div></div>
+                <div class="inputContainer"><label class="inputLabel" for="MaxCollections">Maximum collections on Home</label><input is="emby-input" type="number" id="MaxCollections" min="0" max="2147483647" step="1" required><div class="fieldDescription">Use 0 for no limit. View all always shows every collection.</div></div>
             </fieldset>
 
             <fieldset class="verticalSection verticalSection-extrabottompadding hf-section">
@@ -62,6 +63,7 @@
                 <div id="MediaTypeError" class="fieldDescription" role="alert" style="color: #e53935" hidden>Select at least one: movies or series.</div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeMovies"><span>Include movies</span></label></div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeSeries"><span>Include series</span></label></div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideTitleCounts"><span>Hide title counts on cards</span></label><div class="fieldDescription">Hides the number of titles in Collections, Genres, Ratings and Release Date cards.</div></div>
             </fieldset>
             <fieldset class="verticalSection verticalSection-extrabottompadding hf-section">
                 <legend><h3 class="sectionTitle">Interface tweaks</h3></legend>
@@ -70,6 +72,8 @@
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideCast"><span>Hide the Cast / Play On button</span></label></div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="RoundedPosters"><span>Round the corners of posters and cards</span></label></div>
                 <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideMyMediaTitle"><span>Hide the "My Media" section title</span></label></div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideMyMediaCardText"><span>Hide labels under My Media cards</span></label></div>
+                <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="HideCardSecondaryText"><span>Hide movie years on cards</span></label><div class="fieldDescription">Hides standalone movie years on Jellyfin cards and movie years in HomeFusion grids. TV show details remain visible.</div></div>
             </fieldset>
 
             <div class="fieldDescription">Positions apply to all users. If a user's Home does not show the selected section, the row appears at the bottom instead. Rows sharing a position keep the order Collections, Genres, Ratings, Release Date.</div>
@@ -82,7 +86,7 @@
         (function () {
             var id = '8c6f0a52-3b5e-4d8a-9a3e-6a1f2b7c4d10';
             var page = document.querySelector('#HomeFusionConfigPage');
-            var booleans = ['ShowGenres', 'RandomizeGenres', 'ShowRatings', 'ShowReleaseDates', 'ShowCollections', 'RandomizeCollections', 'IncludeMovies', 'IncludeSeries', 'HideSyncPlay', 'HideCast', 'RoundedPosters', 'HideMyMediaTitle'];
+            var booleans = ['ShowGenres', 'RandomizeGenres', 'ShowRatings', 'ShowReleaseDates', 'ShowCollections', 'RandomizeCollections', 'IncludeMovies', 'IncludeSeries', 'HideTitleCounts', 'HideSyncPlay', 'HideCast', 'RoundedPosters', 'HideMyMediaTitle', 'HideCardSecondaryText', 'HideMyMediaCardText'];
             var positions = ['GenresPosition', 'RatingsPosition', 'ReleaseDatesPosition', 'CollectionsPosition'];
             var options = page.querySelector('#HomeFusionPositionOptions');
             page.querySelectorAll('.hfPosition').forEach(function (select) {
@@ -90,6 +94,7 @@
             });
             var includeMovies = page.querySelector('#IncludeMovies');
             var includeSeries = page.querySelector('#IncludeSeries');
+            var maxCollections = page.querySelector('#MaxCollections');
             var mediaTypeError = page.querySelector('#MediaTypeError');
             [includeMovies, includeSeries].forEach(function (checkbox) {
                 checkbox.addEventListener('change', function () {
@@ -129,6 +134,7 @@
                 ApiClient.getPluginConfiguration(id).then(function (config) {
                     booleans.forEach(function (key) { page.querySelector('#' + key).checked = config[key]; });
                     positions.forEach(function (key) { page.querySelector('#' + key).value = config[key] || 'bottom'; });
+                    maxCollections.value = config.MaxCollections == null ? 0 : config.MaxCollections;
                     return renderGenres(config.HiddenGenres);
                 }).catch(function () { Dashboard.alert('Could not load Home Fusion settings.'); })
                     .finally(function () { Dashboard.hideLoadingMsg(); });
@@ -140,10 +146,18 @@
                     includeMovies.focus();
                     return;
                 }
+                var maxValue = maxCollections.value.trim();
+                var limit = Number(maxValue);
+                if (!/^\d+$/.test(maxValue) || !Number.isSafeInteger(limit) || limit > 2147483647) {
+                    Dashboard.alert('Enter a whole number between 0 and 2147483647 for maximum collections.');
+                    maxCollections.focus();
+                    return;
+                }
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(id).then(function (config) {
                     booleans.forEach(function (key) { config[key] = page.querySelector('#' + key).checked; });
                     positions.forEach(function (key) { config[key] = page.querySelector('#' + key).value; });
+                    config.MaxCollections = limit;
                     config.HiddenGenres = Array.prototype.map.call(
                         genreList.querySelectorAll('input:checked'), function (c) { return c.value; }).join('|');
                     return ApiClient.updatePluginConfiguration(id, config);
