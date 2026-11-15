@@ -1,85 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title description">
   <title id="title">HomeFusion</title>
+  <desc id="description">A simple home and media rows icon above the HomeFusion name.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#141a33"/><stop offset=".55" stop-color="#0b0f1f"/><stop offset="1" stop-color="#05070f"/></linearGradient>
-    <radialGradient id="glow1" cx=".18" cy=".2" r=".6"><stop stop-color="#00a4dc" stop-opacity=".45"/><stop offset="1" stop-color="#00a4dc" stop-opacity="0"/></radialGradient>
-    <radialGradient id="glow2" cx=".9" cy=".95" r=".6"><stop stop-color="#aa5cc3" stop-opacity=".4"/><stop offset="1" stop-color="#aa5cc3" stop-opacity="0"/></radialGradient>
-    <linearGradient id="logo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#aa5cc3"/><stop offset="1" stop-color="#00a4dc"/></linearGradient>
-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff6a88"/><stop offset="1" stop-color="#7b2ff7"/></linearGradient>
-    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00c6ff"/><stop offset="1" stop-color="#0052d4"/></linearGradient>
-    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7971e"/><stop offset="1" stop-color="#e2445c"/></linearGradient>
-    <linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#11998e"/><stop offset="1" stop-color="#38ef7d"/></linearGradient>
-    <linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fc466b"/><stop offset="1" stop-color="#3f5efb"/></linearGradient>
-    <linearGradient id="g6" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd200"/><stop offset="1" stop-color="#f7971e"/></linearGradient>
-    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient>
-    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset=".7" stop-color="#05070f" stop-opacity="0"/><stop offset="1" stop-color="#05070f"/></linearGradient>
-    <filter id="drop" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".55"/></filter>
-    <symbol id="card" viewBox="0 0 240 135"><rect width="240" height="135" rx="10" fill="url(#shade)"/></symbol>
-    <symbol id="star" viewBox="0 0 24 24"><path fill="#fff" d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"/></symbol>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#151b32"/>
+      <stop offset="1" stop-color="#090c18"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="1" x2="1" y2="0">
+      <stop stop-color="#aa5cc3"/>
+      <stop offset="1" stop-color="#00a4dc"/>
+    </linearGradient>
   </defs>
 
-  <rect width="1280" height="720" fill="url(#bg)"/>
-  <rect width="1280" height="720" fill="url(#glow1)"/>
-  <rect width="1280" height="720" fill="url(#glow2)"/>
+  <rect width="1280" height="720" fill="url(#background)"/>
 
-  <!-- Title block -->
-  <g transform="translate(80 92)">
-    <g transform="translate(0 -46)">
-      <rect width="88" height="88" rx="22" fill="url(#logo)"/>
-      <rect x="16" y="20" width="56" height="12" rx="4" fill="#fff" opacity=".95"/>
-      <rect x="16" y="38" width="40" height="12" rx="4" fill="#fff" opacity=".75"/>
-      <rect x="16" y="56" width="50" height="12" rx="4" fill="#fff" opacity=".55"/>
-    </g>
-    <text x="116" y="16" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="74" font-weight="700" fill="#fff" letter-spacing="-1">Home<tspan fill="#5ccfff">Fusion</tspan></text>
-    <text x="118" y="58" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27" fill="#aab3cf">Genres · Ratings · Release Date rows for your Jellyfin home</text>
+  <g transform="translate(640 360) scale(1.15) translate(-640 -288.5)">
+  <g transform="translate(520 90)">
+    <rect width="240" height="240" rx="58" fill="url(#accent)"/>
+    <path d="M56 115 120 62l64 53v62a12 12 0 0 1-12 12H68a12 12 0 0 1-12-12z"
+          fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M88 127h64M88 148h64M88 169h45"
+          fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
   </g>
 
-  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" fill="#fff">
-    <!-- Row: Genres -->
-    <text x="80" y="236" font-size="26" font-weight="600">Genres</text>
-    <g filter="url(#drop)">
-      <rect x="80" y="252" width="240" height="135" rx="10" fill="url(#g1)"/><use href="#card" x="80" y="252" width="240" height="135"/>
-      <rect x="340" y="252" width="240" height="135" rx="10" fill="url(#g2)"/><use href="#card" x="340" y="252" width="240" height="135"/>
-      <rect x="600" y="252" width="240" height="135" rx="10" fill="url(#g4)"/><use href="#card" x="600" y="252" width="240" height="135"/>
-      <rect x="860" y="252" width="240" height="135" rx="10" fill="url(#g3)"/><use href="#card" x="860" y="252" width="240" height="135"/>
-      <rect x="1120" y="252" width="240" height="135" rx="10" fill="url(#g5)"/>
-    </g>
-    <g font-size="30" font-weight="700" text-anchor="middle">
-      <text x="200" y="330">Action</text><text x="460" y="330">Comedy</text><text x="720" y="330">Romance</text><text x="980" y="330">Horror</text>
-    </g>
-
-    <!-- Row: Ratings -->
-    <text x="80" y="446" font-size="26" font-weight="600">Ratings</text>
-    <g filter="url(#drop)">
-      <rect x="80" y="462" width="240" height="135" rx="10" fill="url(#g6)"/><use href="#card" x="80" y="462" width="240" height="135"/>
-      <rect x="340" y="462" width="240" height="135" rx="10" fill="url(#g3)"/><use href="#card" x="340" y="462" width="240" height="135"/>
-      <rect x="600" y="462" width="240" height="135" rx="10" fill="url(#g5)"/><use href="#card" x="600" y="462" width="240" height="135"/>
-      <rect x="860" y="462" width="240" height="135" rx="10" fill="url(#g2)"/><use href="#card" x="860" y="462" width="240" height="135"/>
-      <rect x="1120" y="462" width="240" height="135" rx="10" fill="url(#g1)"/>
-    </g>
-    <g font-size="30" font-weight="700" text-anchor="middle">
-      <text x="200" y="540">Top 50</text><text x="460" y="540">8 - 10</text><text x="720" y="540">7</text><text x="980" y="540">6</text>
-    </g>
-    <g opacity=".95">
-      <use href="#star" x="186" y="552" width="28" height="28"/>
-      <use href="#star" x="418" y="552" width="28" height="28"/><use href="#star" x="446" y="552" width="28" height="28"/><use href="#star" x="474" y="552" width="28" height="28"/>
-      <use href="#star" x="692" y="552" width="28" height="28"/><use href="#star" x="720" y="552" width="28" height="28"/>
-      <use href="#star" x="966" y="552" width="28" height="28"/>
-    </g>
-
-    <!-- Row: Release Date (peeking) -->
-    <text x="80" y="656" font-size="26" font-weight="600">Release Date</text>
-    <g filter="url(#drop)">
-      <rect x="80" y="672" width="240" height="135" rx="10" fill="url(#g2)"/>
-      <rect x="340" y="672" width="240" height="135" rx="10" fill="url(#g4)"/>
-      <rect x="600" y="672" width="240" height="135" rx="10" fill="url(#g1)"/>
-      <rect x="860" y="672" width="240" height="135" rx="10" fill="url(#g6)"/>
-      <rect x="1120" y="672" width="240" height="135" rx="10" fill="url(#g3)"/>
-    </g>
-    <g font-size="30" font-weight="700" text-anchor="middle">
-      <text x="200" y="712">Latest</text><text x="460" y="712">2010's</text><text x="720" y="712">2000's</text><text x="980" y="712">1990's</text>
-    </g>
+  <text x="640" y="431" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="82" font-weight="700" letter-spacing="-2" fill="#fff">Home<tspan fill="#65c8f2">Fusion</tspan></text>
+  <text x="640" y="487" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="27" fill="#aeb8d0" letter-spacing=".5">Your Jellyfin home screen, your way.</text>
   </g>
-
-  <rect width="1280" height="720" fill="url(#fade)"/>
 </svg>

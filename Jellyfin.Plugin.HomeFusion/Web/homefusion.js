@@ -202,12 +202,13 @@
 
     // ---- Rendering (matches Jellyfin's native overflow card markup) ----
 
-    function cardHtml(cat, idx, img, portrait) {
+    function cardHtml(cat, idx, img, portrait, hideCounts) {
         var style = img ? ' style="background-image:url(\'' + img + '\');"' : '';
         var tag = cat.href ? 'a' : 'button';
         var action = cat.href ? ' href="' + esc(cat.href) + '"' : ' type="button"';
         var subtitle = cat.subtitle == null ? cat.items.length + ' titles' : cat.subtitle;
         var primaryText = portrait ? cat.name : subtitle;
+        var showSubtitle = !hideCounts || (portrait && cat.items[0].ChildCount == null);
         return '<div class="card ' + (portrait ? 'overflowPortraitCard' : 'overflowBackdropCard') + ' card-hoverable" data-hf-index="' + idx + '">' +
             '<div class="cardBox cardBox-bottompadded">' +
             '<div class="cardScalable">' +
@@ -218,32 +219,38 @@
             '</' + tag + '>' +
             '<div class="cardOverlayContainer"' + (cat.href ? ' style="pointer-events:none;"' : '') + '></div>' +
             '</div>' +
-            '<div class="cardText cardTextCentered cardText-first' + (portrait ? ' hf-collection-name' : '') + '"><bdi>' + esc(primaryText) + '</bdi></div>' +
-            (portrait ? '<div class="cardText cardTextCentered cardText-secondary"><bdi>' + esc(subtitle) + '</bdi></div>' : '') +
+            (portrait || showSubtitle ? '<div class="cardText cardTextCentered cardText-first' + (portrait ? ' hf-collection-name' : '') + '"><bdi>' + esc(primaryText) + '</bdi></div>' : '') +
+            (portrait && showSubtitle ? '<div class="cardText cardTextCentered cardText-secondary"><bdi>' + esc(subtitle) + '</bdi></div>' : '') +
             '</div></div>';
     }
 
     function rowElement(key, title, cats, images) {
         images = images || categoryImages(cats);
+        var hideCounts = config && config.HideTitleCounts;
+        var maxCollections = config && config.MaxCollections;
+        var visibleCats = key === 'collections' && Number.isInteger(maxCollections) && maxCollections > 0 ?
+            cats.slice(0, maxCollections) : cats;
         var section = document.createElement('div');
         section.className = 'verticalSection hf-section';
         section.setAttribute(ROW_ATTR, key);
         section.innerHTML =
             '<div class="sectionTitleContainer sectionTitleContainer-cards padded-left">' +
-            '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2>' +
-            (key === 'collections' ? '<button type="button" is="paper-icon-button-light" class="paper-icon-button-light hf-view-all" title="View all collections" aria-label="View all collections">' +
-                '<span class="material-icons chevron_right" aria-hidden="true"></span></button>' : '') +
+            (key === 'collections' ?
+                '<button type="button" is="emby-button" class="button-flat button-flat-mini sectionTitleTextButton hf-view-all" title="View all collections" aria-label="View all collections">' +
+                '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2>' +
+                '<span class="material-icons chevron_right" aria-hidden="true"></span></button>' :
+                '<h2 class="sectionTitle sectionTitle-cards">' + esc(title) + '</h2>') +
             '</div>' +
             '<div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">' +
             '<div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x">' +
-            cats.map(function (cat, idx) { return cardHtml(cat, idx, images[idx], key === 'collections'); }).join('') +
+            visibleCats.map(function (cat, idx) { return cardHtml(cat, idx, images[idx], key === 'collections', hideCounts); }).join('') +
             '</div></div>';
         section.addEventListener('click', function (e) {
             if (key === 'collections') {
                 if (e.target.closest('.hf-view-all')) {
                     e.preventDefault();
                     e.stopPropagation();
-                    openCollections(title, cats, images);
+                    openCollections(title, cats, images, hideCounts);
                 }
                 return;
             }
@@ -258,7 +265,7 @@
         return section;
     }
 
-    function openCollections(title, collections, images) {
+    function openCollections(title, collections, images, hideCounts) {
         var overlay = document.createElement('div');
         overlay.className = 'hf-overlay';
         overlay.innerHTML =
@@ -267,7 +274,7 @@
             '<h2 class="sectionTitle">' + esc(title) + '</h2></div>' +
             '<div is="emby-itemscontainer" class="hf-grid itemsContainer vertical-wrap padded-left padded-right">' +
             collections.map(function (collection, index) {
-                return cardHtml(collection, index, images[index], true);
+                return cardHtml(collection, index, images[index], true, hideCounts);
             }).join('') +
             '</div>';
         function close() { overlay.remove(); window.removeEventListener('hashchange', close); }
@@ -368,7 +375,10 @@
             '<div is="emby-itemscontainer" class="hf-grid itemsContainer vertical-wrap padded-left padded-right">' +
             items.map(function (i) {
                 var img = posterImage(i, 400);
-                var sub = [year(i), i.CommunityRating ? '\u2605 ' + i.CommunityRating.toFixed(1) : ''].filter(Boolean).join(' \u2022 ');
+                var itemYear = year(i);
+                var rating = i.CommunityRating ? '\u2605 ' + i.CommunityRating.toFixed(1) : '';
+                var sub = (itemYear ? '<span' + (i.Type === 'Movie' ? ' class="hf-movie-year"' : '') + '>' +
+                    esc(itemYear) + (rating ? ' \u2022 ' : '') + '</span>' : '') + esc(rating);
                 var ud = i.UserData || {};
                 var href = '#/details?id=' + i.Id + '&serverId=' + serverId;
                 var positionTicks = ud.PlaybackPositionTicks ? ' data-positionticks="' + ud.PlaybackPositionTicks + '"' : '';
@@ -396,7 +406,7 @@
                     '<span class="material-icons cardOverlayButton-icon more_vert" aria-hidden="true"></span></button>' +
                     '</div></div>' +
                     '</div><div class="cardText cardTextCentered cardText-first"><bdi>' + esc(i.Name) + '</bdi></div>' +
-                    '<div class="cardText cardTextCentered cardText-secondary"><bdi>' + esc(sub) + '</bdi></div>' +
+                    '<div class="cardText cardTextCentered cardText-secondary"><bdi>' + sub + '</bdi></div>' +
                     '</div></div>';
             }).join('') +
             '</div>';
@@ -476,6 +486,23 @@
         }).filter(Boolean);
     }
 
+    var myMediaTweaksEnabled = false;
+
+    function markMyMediaSections(sections) {
+        if (!sections || !myMediaTweaksEnabled) return;
+        var titles = translated(positionTitles['after-my-media'].keys)
+            .concat(positionTitles['after-my-media'].fallbacks)
+            .map(function (title) { return title.trim().toLowerCase(); });
+        Array.prototype.forEach.call(sections.children, function (section) {
+            var title = section.querySelector('.sectionTitle');
+            var matches = !section.hasAttribute(ROW_ATTR) && (
+                section.querySelector('.homeLibraryButtonContainer, .card[data-type="CollectionFolder"], .card[data-type="UserView"]') ||
+                (title && titles.indexOf(title.textContent.trim().toLowerCase()) >= 0));
+            if (matches && !section.classList.contains('hf-my-media')) section.classList.add('hf-my-media');
+            if (!matches && section.classList.contains('hf-my-media')) section.classList.remove('hf-my-media');
+        });
+    }
+
     // Returns the native section the row should follow; the last HomeFusion row already
     // placed after the same anchor is used so rows sharing a position keep their order.
     function findPositionTarget(sections, position) {
@@ -532,8 +559,21 @@
         HideCast: 'button[title*="Play On" i],button[aria-label*="Play On" i],button[title*="Cast" i],button[aria-label*="Cast" i],a[title*="Play On" i],a[aria-label*="Play On" i],a[title*="Cast" i],a[aria-label*="Cast" i],.headerCastButton{display:none !important;}',
         RoundedPosters: '.cardBox,.cardScalable,.cardImageContainer,.cardImage,.cardPadder,.cardOverlayContainer,.cardHoverMenu{border-radius:12px !important;}' +
             '.cardScalable,.cardImageContainer{overflow:hidden !important;}',
-        HideMyMediaTitle: '#homeTab .verticalSection.section0 > h2.sectionTitle{visibility:hidden !important;}'
+        HideMyMediaTitle: '.hf-my-media > .sectionTitle,.hf-my-media > .verticalSection > .sectionTitle{visibility:hidden !important;}',
+        HideCardSecondaryText: '.hf-native-movie-year,.hf-movie-year{display:none !important;}',
+        HideMyMediaCardText: '.hf-my-media .cardText{visibility:hidden !important;}'
     };
+
+    var hideMovieYears = false;
+
+    function markMovieYears() {
+        if (!hideMovieYears) return;
+        document.querySelectorAll('.card[data-type="Movie"] .cardText.cardText-secondary').forEach(function (text) {
+            var isYear = /^\p{Decimal_Number}{4}$/u.test(text.textContent.trim());
+            if (isYear && !text.classList.contains('hf-native-movie-year')) text.classList.add('hf-native-movie-year');
+            if (!isYear && text.classList.contains('hf-native-movie-year')) text.classList.remove('hf-native-movie-year');
+        });
+    }
 
     function applyTweaks() {
         if (document.getElementById('hf-tweaks')) return;
@@ -541,8 +581,12 @@
         s.id = 'hf-tweaks';
         document.head.appendChild(s);
         loadConfig().then(function (cfg) {
+            myMediaTweaksEnabled = cfg.HideMyMediaTitle || cfg.HideMyMediaCardText;
+            hideMovieYears = cfg.HideCardSecondaryText;
             s.textContent = Object.keys(TWEAK_CSS).filter(function (k) { return cfg[k]; })
                 .map(function (k) { return TWEAK_CSS[k]; }).join('\n');
+            markMyMediaSections(findSections());
+            markMovieYears();
         }, function () { s.remove(); });
     }
 
@@ -550,7 +594,9 @@
         var c = api();
         if (building || !c || !c.getCurrentUserId || !c.getCurrentUserId() || !c.accessToken || !c.accessToken()) return;
         applyTweaks();
+        markMovieYears();
         var sections = findSections();
+        markMyMediaSections(sections);
         if (!sections || sections.querySelector('[' + ROW_ATTR + ']')) return;
         // Wait until Jellyfin has rendered its own sections so positions can be resolved.
         if (!sections.querySelector('.verticalSection, .homeLibraryButtonContainer')) return;
@@ -589,6 +635,6 @@
     }
 
     new MutationObserver(function () { tryInject(); })
-        .observe(document.documentElement, { childList: true, subtree: true });
+        .observe(document.documentElement, { childList: true, characterData: true, subtree: true });
     document.addEventListener('viewshow', tryInject);
 })();

@@ -33,13 +33,17 @@ public sealed class HomeFusionController : ControllerBase
             },
             c.RandomizeGenres,
             c.RandomizeCollections,
+            c.MaxCollections,
             c.HiddenGenres,
             c.IncludeMovies,
             c.IncludeSeries,
+            c.HideTitleCounts,
             c.HideSyncPlay,
             c.HideCast,
             c.RoundedPosters,
-            c.HideMyMediaTitle
+            c.HideMyMediaTitle,
+            c.HideCardSecondaryText,
+            c.HideMyMediaCardText
         });
     }
 }
